@@ -11,7 +11,7 @@ DOCKER := $(shell which docker 2>/dev/null || which podman 2>/dev/null)
 # Add the bin directory to the PATH
 export PATH := $(BINDIR):$(PATH)
 # A place to store the generated catalogs
-CATALOG_DIR=${PWD}/catalogs
+CATALOG_DIR=${PWD}/catalog
 
 # A place to store the operator catalog templates
 OPERATOR_CATALOG_TEMPLATE_DIR = ${PWD}/catalog-templates
@@ -39,11 +39,20 @@ $(LOCALBIN):
 
 
 .PHONY: basic
-basic:
+basic: clean
 	for version in $(OCP_VERSIONS); do \
 		mkdir -p ${CATALOG_DIR}/$${version}/${OPERATOR_NAME}/ && \
 		$(OPM) alpha render-template basic -o yaml ${OPERATOR_CATALOG_TEMPLATE_DIR}/basic-template.yaml > ${CATALOG_DIR}/$${version}/${OPERATOR_NAME}/catalog.yaml; \
 	done
+
+
+.PHONY: create-catalog-dir
+create-catalog-dir:
+	mkdir -p $(CATALOG_DIR)
+
+.PHONY: clean
+clean: create-catalog-dir
+	find $(CATALOG_DIR) -type d -name ${OPERATOR_NAME} -exec rm -rf {} +
 
 .PHONY: yq
 YQ ?= $(LOCALBIN)/yq

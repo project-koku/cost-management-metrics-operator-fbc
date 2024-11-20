@@ -14,10 +14,7 @@ export PATH := $(BINDIR):$(PATH)
 CATALOG_DIR=${PWD}/catalog
 
 # A place to store the operator catalog templates
-OPERATOR_CATALOG_TEMPLATE_DIR = ${PWD}/catalog-templates
-
-# The operator pipeline image to use for the fbc-onboarding target
-OPERATOR_PIPELINE_IMAGE ?= quay.io/redhat-isv/operator-pipelines-images:released
+OPERATOR_CATALOG_TEMPLATE_DIR = ${PWD}/catalog-template
 
 # Define the paths for both auth files
 DOCKER_CONFIG := $(HOME)/.docker/config.json
@@ -33,21 +30,15 @@ OPM_VERSION ?= v1.48.0
 OPM_FILENAME ?= opm-$(OPM_VERSION)
 YQ_VERSION ?= v4.2.0
 
-
 ## Location to install dependencies to
 LOCALBIN ?= $(shell pwd)/bin
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
-
-
 .PHONY: basic
 basic: clean opm
-	for version in $(OCP_VERSIONS); do \
-		mkdir -p ${CATALOG_DIR}/$${version}/${OPERATOR_NAME}/ && \
-		$(OPM) alpha render-template basic -o yaml ${OPERATOR_CATALOG_TEMPLATE_DIR}/basic-template.yaml > ${CATALOG_DIR}/$${version}/${OPERATOR_NAME}/catalog.yaml; \
-	done
-
+	mkdir -p ${CATALOG_DIR}/${OPERATOR_NAME}/ && \
+	$(OPM) alpha render-template basic -o yaml ${OPERATOR_CATALOG_TEMPLATE_DIR}/basic-template.yaml > ${CATALOG_DIR}/${OPERATOR_NAME}/catalog.yaml; \
 
 .PHONY: create-catalog-dir
 create-catalog-dir:

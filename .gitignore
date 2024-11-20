@@ -3,3 +3,5 @@
 /workdir/
 /util
 /verified_coordinates
+
+.DS_Store

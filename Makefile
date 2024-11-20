@@ -43,9 +43,11 @@ $(LOCALBIN):
 
 .PHONY: basic
 basic: clean opm
+	mkdir -p ${CATALOG_DIR}/base/${OPERATOR_NAME}/
+	$(OPM) alpha render-template basic -o yaml ${OPERATOR_CATALOG_TEMPLATE_DIR}/basic-template.yaml > ${CATALOG_DIR}/base/${OPERATOR_NAME}/catalog.yaml
 	for version in $(OCP_VERSIONS); do \
 		mkdir -p ${CATALOG_DIR}/$${version}/${OPERATOR_NAME}/ && \
-		$(OPM) alpha render-template basic -o yaml ${OPERATOR_CATALOG_TEMPLATE_DIR}/basic-template.yaml > ${CATALOG_DIR}/$${version}/${OPERATOR_NAME}/catalog.yaml; \
+		cp ${CATALOG_DIR}/base/${OPERATOR_NAME}/catalog.yaml ${CATALOG_DIR}/$${version}/${OPERATOR_NAME}/catalog.yaml; \
 	done
 
 

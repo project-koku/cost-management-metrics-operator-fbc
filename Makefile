@@ -28,8 +28,11 @@ CONTAINERS_AUTH := $(XDG_RUNTIME_DIR)/containers/auth.json
 # DO NOT change this line (except for the versions) if you want to take advantage
 # of the automated catalog promotion
 OCP_VERSIONS=$(shell echo "v4.12 v4.13 v4.14 v4.15 v4.16 v4.17" )
+
 OPM_VERSION ?= v1.48.0
+OPM_FILENAME ?= opm-$(OPM_VERSION)
 YQ_VERSION ?= v4.2.0
+
 
 ## Location to install dependencies to
 LOCALBIN ?= $(shell pwd)/bin
@@ -39,7 +42,7 @@ $(LOCALBIN):
 
 
 .PHONY: basic
-basic: clean
+basic: clean opm
 	for version in $(OCP_VERSIONS); do \
 		mkdir -p ${CATALOG_DIR}/$${version}/${OPERATOR_NAME}/ && \
 		$(OPM) alpha render-template basic -o yaml ${OPERATOR_CATALOG_TEMPLATE_DIR}/basic-template.yaml > ${CATALOG_DIR}/$${version}/${OPERATOR_NAME}/catalog.yaml; \
@@ -72,18 +75,18 @@ endif
 
 
 .PHONY: opm
-OPM ?= $(LOCALBIN)/opm
-operator-sdk: ## Download operator-sdk locally if necessary.
-ifeq (,$(wildcard $(OPM)))
-ifeq (, $(shell which opm 2>/dev/null))
+OPM ?= $(LOCALBIN)/$(OPM_FILENAME)
+opm: ## Download opm locally if necessary.
+ifeq (,$(wildcard $(OPM_FILENAME)))
+ifeq (, $(shell which $(OPM_FILENAME) 2>/dev/null))
 	@{ \
 	set -e ;\
 	mkdir -p $(dir $(OPM)) ;\
 	OS=$(shell go env GOOS) && ARCH=$(shell go env GOARCH) && \
-	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/$(OPM_VERSION)/$${OS}_$${ARCH}-opm ;\
+	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/$(OPM_VERSION)/$${OS}-$${ARCH}-opm ;\
 	chmod +x $(OPM) ;\
 	}
 else
-OPM = $(shell which opm)
+OPM = $(shell which $(OPM_FILENAME))
 endif
 endif

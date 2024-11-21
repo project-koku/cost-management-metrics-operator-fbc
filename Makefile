@@ -1,5 +1,6 @@
-PREVIOUS_VERSION ?= 3.3.1
-VERSION ?= 3.3.2
+VERSION ?= 3.3.1
+PREVIOUS_VERSION ?= 3.3.0
+PULLSPEC ?= registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle@sha256:01cab18a6af3cc819a936ce434004d5dce4495474e62bc116643eb753c25cd91
 
 PWD=$(shell pwd)
 OPERATOR_NAME=costmanagement-metrics-operator
@@ -15,6 +16,7 @@ CATALOG_DIR=${PWD}/catalog
 
 # A place to store the operator catalog templates
 OPERATOR_CATALOG_TEMPLATE_DIR = ${PWD}/catalog-template
+CATALOG_TEMPLATE_FILENAME = basic-template.yaml
 
 # Define the paths for both auth files
 DOCKER_CONFIG := $(HOME)/.docker/config.json
@@ -26,19 +28,29 @@ CONTAINERS_AUTH := $(XDG_RUNTIME_DIR)/containers/auth.json
 # of the automated catalog promotion
 OCP_VERSIONS=$(shell echo "v4.12 v4.13 v4.14 v4.15 v4.16 v4.17" )
 
+OS=$(shell go env GOOS)
+ARCH=$(shell go env GOARCH)
+
 OPM_VERSION ?= v1.48.0
 OPM_FILENAME ?= opm-$(OPM_VERSION)
-YQ_VERSION ?= v4.2.0
+YQ_VERSION ?= v4.44.5
+YQ_FILENAME ?= yq-$(YQ_VERSION)
 
 ## Location to install dependencies to
 LOCALBIN ?= $(shell pwd)/bin
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
-.PHONY: basic
-basic: clean opm
+.PHONY: catalog
+catalog: clean opm
 	mkdir -p ${CATALOG_DIR}/${OPERATOR_NAME}/ && \
-	$(OPM) alpha render-template basic -o yaml ${OPERATOR_CATALOG_TEMPLATE_DIR}/basic-template.yaml > ${CATALOG_DIR}/${OPERATOR_NAME}/catalog.yaml; \
+	$(OPM) alpha render-template basic -o yaml ${OPERATOR_CATALOG_TEMPLATE_DIR}/${CATALOG_TEMPLATE_FILENAME} > ${CATALOG_DIR}/${OPERATOR_NAME}/catalog.yaml;
+	$(OPM) validate ${CATALOG_DIR}/${OPERATOR_NAME}
+
+.PHONY: add-new-version
+add-new-version: yq
+	$(YQ) -i eval 'select(.schema == "olm.template.basic").entries[] |= select(.schema == "olm.channel").entries += [{"name" : "$(OPERATOR_NAME).$(VERSION)", "replaces": "$(OPERATOR_NAME).$(PREVIOUS_VERSION)"}]' ${OPERATOR_CATALOG_TEMPLATE_DIR}/${CATALOG_TEMPLATE_FILENAME}
+	$(YQ) -i '.entries += [{"image": "$(PULLSPEC)", "schema": "olm.bundle"}]' ${OPERATOR_CATALOG_TEMPLATE_DIR}/${CATALOG_TEMPLATE_FILENAME}
 
 .PHONY: create-catalog-dir
 create-catalog-dir:
@@ -48,19 +60,20 @@ create-catalog-dir:
 clean: create-catalog-dir
 	find $(CATALOG_DIR) -type d -name ${OPERATOR_NAME} -exec rm -rf {} +
 
+
 .PHONY: yq
-YQ ?= $(LOCALBIN)/yq
-yq: ## Download yq locally if necessary.
+YQ = $(LOCALBIN)/$(YQ_FILENAME)
+yq: ## Download opm locally if necessary.
 ifeq (,$(wildcard $(YQ)))
-ifeq (, $(shell which yq 2>/dev/null))
+ifeq (,$(shell which $(YQ) 2>/dev/null))
 	@{ \
 	set -e ;\
 	mkdir -p $(dir $(YQ)) ;\
-	OS=$(shell go env GOOS) && ARCH=$(shell go env GOARCH) && \
-	curl -sSLo $(YQ) https://github.com/mikefarah/yq/releases/download/$(YQ_VERSION)/yq_$${OS}_${{ARCH}} && chmod +x $(YQ)
+	curl -sSLo $(YQ) https://github.com/mikefarah/yq/releases/download/$(YQ_VERSION)/yq_$(OS)_$(ARCH) ;\
+	chmod +x $(YQ) ;\
 	}
 else
-YQ = $(shell which yq)
+YQ = $(shell which $(YQ))
 endif
 endif
 
@@ -68,16 +81,15 @@ endif
 .PHONY: opm
 OPM ?= $(LOCALBIN)/$(OPM_FILENAME)
 opm: ## Download opm locally if necessary.
-ifeq (,$(wildcard $(OPM_FILENAME)))
-ifeq (, $(shell which $(OPM_FILENAME) 2>/dev/null))
+ifeq (,$(wildcard $(OPM)))
+ifeq (, $(shell which $(OPM) 2>/dev/null))
 	@{ \
 	set -e ;\
 	mkdir -p $(dir $(OPM)) ;\
-	OS=$(shell go env GOOS) && ARCH=$(shell go env GOARCH) && \
-	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/$(OPM_VERSION)/$${OS}-$${ARCH}-opm ;\
+	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/$(OPM_VERSION)/$(OS)-$(ARCH)-opm ;\
 	chmod +x $(OPM) ;\
 	}
 else
-OPM = $(shell which $(OPM_FILENAME))
+OPM = $(shell which $(OPM))
 endif
 endif

@@ -12,6 +12,7 @@ DOCKER := $(shell which docker 2>/dev/null || which podman 2>/dev/null)
 # Add the bin directory to the PATH
 export PATH := $(BINDIR):$(PATH)
 # A place to store the generated catalogs
+CATALOG_DIR_OLD=${PWD}/catalog-old
 CATALOG_DIR=${PWD}/catalog
 
 # A place to store the operator catalog templates
@@ -43,8 +44,10 @@ $(LOCALBIN):
 
 .PHONY: catalog
 catalog: clean opm
-	mkdir -p ${CATALOG_DIR}/${OPERATOR_NAME}/ && \
-	$(OPM) alpha render-template basic -o json ${OPERATOR_CATALOG_TEMPLATE_DIR}/${CATALOG_TEMPLATE_FILENAME} > ${CATALOG_DIR}/${OPERATOR_NAME}/catalog.json;
+	mkdir -p ${CATALOG_DIR_OLD}/${OPERATOR_NAME}/ ${CATALOG_DIR}/${OPERATOR_NAME}/ && \
+	$(OPM) alpha render-template basic -o yaml ${OPERATOR_CATALOG_TEMPLATE_DIR}/${CATALOG_TEMPLATE_FILENAME} > ${CATALOG_DIR_OLD}/${OPERATOR_NAME}/catalog.yaml;
+	$(OPM) alpha render-template basic -o yaml ${OPERATOR_CATALOG_TEMPLATE_DIR}/${CATALOG_TEMPLATE_FILENAME} --migrate-level=bundle-object-to-csv-metadata > ${CATALOG_DIR}/${OPERATOR_NAME}/catalog.yaml;
+	$(OPM) validate ${CATALOG_DIR_OLD}/${OPERATOR_NAME}
 	$(OPM) validate ${CATALOG_DIR}/${OPERATOR_NAME}
 
 .PHONY: add-new-version
@@ -54,10 +57,11 @@ add-new-version: yq
 
 .PHONY: create-catalog-dir
 create-catalog-dir:
-	mkdir -p $(CATALOG_DIR)
+	mkdir -p $(CATALOG_DIR) $(CATALOG_DIR_OLD)
 
 .PHONY: clean
 clean: create-catalog-dir
+	find $(CATALOG_DIR_OLD) -type d -name ${OPERATOR_NAME} -exec rm -rf {} +
 	find $(CATALOG_DIR) -type d -name ${OPERATOR_NAME} -exec rm -rf {} +
 
 

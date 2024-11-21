@@ -2,6 +2,11 @@
 
 File-Based Catalog for Cost Management Metrics Operator
 
+**note**: the catalogs differ depending on OCP version:
+* 4.16 or earlier, bundle metadata must use the olm.bundle.object format
+* 4.17 or later, bundle metadata must use the olm.csv.metadata format
+The catalog for <=4.16 is stored in [catalog-old](catalog-old), whereas >=4.17 is stored in [catalog](catalog)
+
 ## How to update
 
 Updates are made to the [basic-template.yaml](catalog-templates/basic-template.yaml) file and then a catalog is generated from the template. The template can be updated with a Make command.

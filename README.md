@@ -33,5 +33,5 @@ schema: olm.template.basic
 
 3. Rebuild the FBC (this will be very slow, especially the first time running this command). This command also validates the outputted FBC:
 ```
-$ make basic
+$ make catalog
 ```

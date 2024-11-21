@@ -41,8 +41,8 @@ LOCALBIN ?= $(shell pwd)/bin
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
-.PHONY: basic
-basic: clean opm
+.PHONY: catalog
+catalog: clean opm
 	mkdir -p ${CATALOG_DIR}/${OPERATOR_NAME}/ && \
 	$(OPM) alpha render-template basic -o yaml ${OPERATOR_CATALOG_TEMPLATE_DIR}/${CATALOG_TEMPLATE_FILENAME} > ${CATALOG_DIR}/${OPERATOR_NAME}/catalog.yaml;
 	$(OPM) validate ${CATALOG_DIR}/${OPERATOR_NAME}

@@ -44,13 +44,20 @@ $(LOCALBIN):
 .PHONY: catalog
 catalog: clean opm
 	mkdir -p ${CATALOG_DIR}/${OPERATOR_NAME}/ && \
-	$(OPM) alpha render-template basic -o yaml ${OPERATOR_CATALOG_TEMPLATE_DIR}/${CATALOG_TEMPLATE_FILENAME} > ${CATALOG_DIR}/${OPERATOR_NAME}/catalog.yaml;
+	$(OPM) alpha render-template basic -o json ${OPERATOR_CATALOG_TEMPLATE_DIR}/${CATALOG_TEMPLATE_FILENAME} > ${CATALOG_DIR}/${OPERATOR_NAME}/catalog.json;
 	$(OPM) validate ${CATALOG_DIR}/${OPERATOR_NAME}
 
 .PHONY: add-new-version
 add-new-version: yq
 	$(YQ) -i eval 'select(.schema == "olm.template.basic").entries[] |= select(.schema == "olm.channel").entries += [{"name" : "$(OPERATOR_NAME).$(VERSION)", "replaces": "$(OPERATOR_NAME).$(PREVIOUS_VERSION)"}]' ${OPERATOR_CATALOG_TEMPLATE_DIR}/${CATALOG_TEMPLATE_FILENAME}
 	$(YQ) -i '.entries += [{"image": "$(PULLSPEC)", "schema": "olm.bundle"}]' ${OPERATOR_CATALOG_TEMPLATE_DIR}/${CATALOG_TEMPLATE_FILENAME}
+
+.PHONY: render-graph
+render-graph: opm
+	$(OPM) alpha render-graph ${OPERATOR_CATALOG_TEMPLATE_DIR} > data/out
+	docker run --rm -i -v "$$PWD/data":/data ghcr.io/mermaid-js/mermaid-cli/mermaid-cli -i /data/out -o /data/costmanagement-metrics-operator.svg
+	rm -rf data/out
+
 
 .PHONY: create-catalog-dir
 create-catalog-dir:

@@ -87,6 +87,6 @@ entries:
     schema: olm.bundle
   - image: registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle@sha256:01cab18a6af3cc819a936ce434004d5dce4495474e62bc116643eb753c25cd91
     schema: olm.bundle
-  - image: quay.io/redhat-user-workloads/cost-mgmt-dev-tenant/costmanagement-metrics-operator/costmanagement-metrics-operator-bundle:68b454426cd10d0cba40de0a3c21a28f44e8989d
+  - image: registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle@sha256:448e65667b5c167699778b0056a18b31dc7ed95022c803217a2786d27d21e945
     schema: olm.bundle
 schema: olm.template.basic

@@ -44,6 +44,8 @@ entries:
         replaces: costmanagement-metrics-operator.3.2.1
       - name: costmanagement-metrics-operator.3.3.1
         replaces: costmanagement-metrics-operator.3.3.0
+      - name: costmanagement-metrics-operator.3.3.2
+        replaces: costmanagement-metrics-operator.3.3.1
     name: stable
     package: costmanagement-metrics-operator
     schema: olm.channel
@@ -84,5 +86,7 @@ entries:
   - image: registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle@sha256:226634a6f640c8095b8c61055d8c9bb4c81dc50d1cf413267b23caa488982f1b
     schema: olm.bundle
   - image: registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle@sha256:01cab18a6af3cc819a936ce434004d5dce4495474e62bc116643eb753c25cd91
+    schema: olm.bundle
+  - image: quay.io/redhat-user-workloads/cost-mgmt-dev-tenant/costmanagement-metrics-operator/costmanagement-metrics-operator-bundle:68b454426cd10d0cba40de0a3c21a28f44e8989d
     schema: olm.bundle
 schema: olm.template.basic

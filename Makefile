@@ -1,7 +1,8 @@
 VERSION ?= 3.3.2
 PREVIOUS_VERSION ?= 3.3.1
-PULLSPEC ?= quay.io/redhat-user-workloads/cost-mgmt-dev-tenant/costmanagement-metrics-operator/costmanagement-metrics-operator-bundle:68b454426cd10d0cba40de0a3c21a28f44e8989d
-REGISTRY_SHA ?= sha256:ea80f29f03b22d54d021ad888d194105237c0345ebc1ddb49af122e815085ac7
+USER_WORKLOAD_REPO ?= quay.io/redhat-user-workloads/cost-mgmt-dev-tenant/costmanagement-metrics-operator/costmanagement-metrics-operator-bundle
+REGISTRY_REPO ?= registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle
+REGISTRY_SHA ?= sha256:448e65667b5c167699778b0056a18b31dc7ed95022c803217a2786d27d21e945
 
 PWD=$(shell pwd)
 OPERATOR_NAME=costmanagement-metrics-operator
@@ -51,10 +52,17 @@ catalog: clean opm
 	$(OPM) validate ${CATALOG_DIR_OLD}/${OPERATOR_NAME}
 	$(OPM) validate ${CATALOG_DIR}/${OPERATOR_NAME}
 
+	sed -i '' 's|$(USER_WORKLOAD_REPO)|$(REGISTRY_REPO)|g' ${OPERATOR_CATALOG_TEMPLATE_DIR}/${CATALOG_TEMPLATE_FILENAME} ${CATALOG_DIR_OLD}/${OPERATOR_NAME}/catalog.yaml ${CATALOG_DIR}/${OPERATOR_NAME}/catalog.yaml
+
 .PHONY: add-new-version
 add-new-version: yq
 	$(YQ) -i eval 'select(.schema == "olm.template.basic").entries[] |= select(.schema == "olm.channel").entries += [{"name" : "$(OPERATOR_NAME).$(VERSION)", "replaces": "$(OPERATOR_NAME).$(PREVIOUS_VERSION)"}]' ${OPERATOR_CATALOG_TEMPLATE_DIR}/${CATALOG_TEMPLATE_FILENAME}
-	$(YQ) -i '.entries += [{"image": "$(PULLSPEC)", "schema": "olm.bundle"}]' ${OPERATOR_CATALOG_TEMPLATE_DIR}/${CATALOG_TEMPLATE_FILENAME}
+	$(YQ) -i '.entries += [{"image": "$(USER_WORKLOAD_REPO)@$(REGISTRY_SHA)", "schema": "olm.bundle"}]' ${OPERATOR_CATALOG_TEMPLATE_DIR}/${CATALOG_TEMPLATE_FILENAME}
+
+.PHONY: remove-new-version
+remove-new-version: yq
+	$(YQ) -i eval 'select(.schema == "olm.template.basic").entries[] |= select(.schema == "olm.channel").entries -= [{"name" : "$(OPERATOR_NAME).$(VERSION)", "replaces": "$(OPERATOR_NAME).$(PREVIOUS_VERSION)"}]' ${OPERATOR_CATALOG_TEMPLATE_DIR}/${CATALOG_TEMPLATE_FILENAME}
+	$(YQ) -i '.entries -= [{"image": "$(REGISTRY_REPO)@$(REGISTRY_SHA)", "schema": "olm.bundle"}]' ${OPERATOR_CATALOG_TEMPLATE_DIR}/${CATALOG_TEMPLATE_FILENAME}
 
 .PHONY: create-catalog-dir
 create-catalog-dir:

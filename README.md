@@ -13,9 +13,9 @@ Updates are made to the [basic-template.yaml](catalog-templates/basic-template.y
 
 1. in the [Makefile](Makefile), update `VERSION`, `PREVIOUS_VERSION`, and `REGISTRY_SHA` to the latest values:
 ```
-VERSION ?= 3.3.1
-PREVIOUS_VERSION ?= 3.3.0
-REGISTRY_SHA ?= sha256:01cab18a6af3cc819a936ce434004d5dce4495474e62bc116643eb753c25cd91
+VERSION ?= 3.3.2
+PREVIOUS_VERSION ?= 3.3.1
+REGISTRY_SHA ?= sha256:448e65667b5c167699778b0056a18b31dc7ed95022c803217a2786d27d21e945
 ```
 
 2. run `make add-new-version` which will add the new version and pullspec to the template:
@@ -25,18 +25,18 @@ $ make add-new-version
 which results in:
 ```
 ...
-      - name: costmanagement-metrics-operator.3.3.1
-        replaces: costmanagement-metrics-operator.3.3.0
+      - name: costmanagement-metrics-operator.3.3.2
+        replaces: costmanagement-metrics-operator.3.3.1
     name: stable
     package: costmanagement-metrics-operator
     schema: olm.channel
 ...
-  - image: registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle@sha256:01cab18a6af3cc819a936ce434004d5dce4495474e62bc116643eb753c25cd91
+  - image: quay.io/redhat-user-workloads/cost-mgmt-dev-tenant/costmanagement-metrics-operator/costmanagement-metrics-operator-bundle@sha256:448e65667b5c167699778b0056a18b31dc7ed95022c803217a2786d27d21e945
     schema: olm.bundle
 schema: olm.template.basic
 ```
 
-3. Rebuild the FBC (this will be very slow, especially the first time running this command). This command also validates the outputted FBC:
+3. Rebuild the FBC (this will be very slow, especially the first time running this command). This command also validates the outputted FBC and perform post-processing to replace the `quay.io/redhat-user-workloads` test repo with the correct `registry.redhat.io/costmanagement` bundle repo in the FBCs and basic-template:
 ```
 $ make catalog
 ```

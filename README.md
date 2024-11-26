@@ -71,3 +71,20 @@ costmanagement-metrics-operator-fbc-component-v4-17 quay.io/redhat-user-workload
 ```
 
 3. These are the `CatalogSource` images and are passed to QE for testing.
+
+## Configuring a cluster with FBC
+
+1. install python dependencies:
+```
+pipenv install --deploy
+```
+
+2. run the `configure_cluster.py`, providing the image corresponding to the OCP verison under test. For example, on an OCP v4.16 clsuter:
+```
+pipenv run ./configure_cluster.py -i quay.io/redhat-user-workloads/cost-mgmt-dev-tenant/costmanagement-metrics-operator-fbc-component-v4-16@sha256:4edbd45925c170b43a60441f2693a3e07f8bfc7e635f5cecf96bea2a185be8d5
+```
+
+This will configure the cluster to:
+a. disable default OperatorHub sources
+b. install an ImageDigestMirrorSet which allows the cluster to pull the operator images which have not landed in registry.readhat.io yet.
+c. install the CatalogSource to make the operater installable through Operator Hub.

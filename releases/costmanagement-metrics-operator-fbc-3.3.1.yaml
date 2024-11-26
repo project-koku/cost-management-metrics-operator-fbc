@@ -4,7 +4,7 @@ kind: Release
 metadata:
   labels:
     release.appstudio.openshift.io/author: 'mskarbek'
-  name: costmanagement-metrics-operator-fbc-v4-12-lsxbf-qp8t6
+  name: costmanagement-metrics-operator-prod-fbc-v4-12-lsxbf-qp8t6
   namespace: cost-mgmt-dev-tenant
 spec:
   releasePlan: costmanagement-metrics-operator-prod-fbc-v4-12
@@ -15,7 +15,7 @@ kind: Release
 metadata:
   labels:
     release.appstudio.openshift.io/author: 'mskarbek'
-  name: costmanagement-metrics-operator-fbc-v4-13-kwcp2-d48vq
+  name: costmanagement-metrics-operator-prod-fbc-v4-13-kwcp2-d48vq
   namespace: cost-mgmt-dev-tenant
 spec:
   releasePlan: costmanagement-metrics-operator-prod-fbc-v4-13
@@ -26,7 +26,7 @@ kind: Release
 metadata:
   labels:
     release.appstudio.openshift.io/author: 'mskarbek'
-  name: costmanagement-metrics-operator-fbc-v4-14-x9fmz-mqcld
+  name: costmanagement-metrics-operator-prod-fbc-v4-14-x9fmz-mqcld
   namespace: cost-mgmt-dev-tenant
 spec:
   releasePlan: costmanagement-metrics-operator-prod-fbc-v4-14
@@ -37,7 +37,7 @@ kind: Release
 metadata:
   labels:
     release.appstudio.openshift.io/author: 'mskarbek'
-  name: costmanagement-metrics-operator-fbc-v4-15-lw4gl-8mlrv
+  name: costmanagement-metrics-operator-prod-fbc-v4-15-lw4gl-8mlrv
   namespace: cost-mgmt-dev-tenant
 spec:
   releasePlan: costmanagement-metrics-operator-prod-fbc-v4-15
@@ -48,7 +48,7 @@ kind: Release
 metadata:
   labels:
     release.appstudio.openshift.io/author: 'mskarbek'
-  name: costmanagement-metrics-operator-fbc-v4-16-fhqkg-7rhx2
+  name: costmanagement-metrics-operator-prod-fbc-v4-16-fhqkg-7rhx2
   namespace: cost-mgmt-dev-tenant
 spec:
   releasePlan: costmanagement-metrics-operator-prod-fbc-v4-16
@@ -59,7 +59,7 @@ kind: Release
 metadata:
   labels:
     release.appstudio.openshift.io/author: 'mskarbek'
-  name: costmanagement-metrics-operator-fbc-v4-17-z6lpk-fh884
+  name: costmanagement-metrics-operator-prod-fbc-v4-17-z6lpk-fh884
   namespace: cost-mgmt-dev-tenant
 spec:
   releasePlan: costmanagement-metrics-operator-prod-fbc-v4-17

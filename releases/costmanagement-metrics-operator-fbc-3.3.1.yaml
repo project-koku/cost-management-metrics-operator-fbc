@@ -1,0 +1,66 @@
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  labels:
+    release.appstudio.openshift.io/author: 'mskarbek'
+  name: costmanagement-metrics-operator-fbc-v4-12-lsxbf-qp8t6
+  namespace: cost-mgmt-dev-tenant
+spec:
+  releasePlan: costmanagement-metrics-operator-prod-fbc-v4-12
+  snapshot: costmanagement-metrics-operator-fbc-v4-12-lsxbf
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  labels:
+    release.appstudio.openshift.io/author: 'mskarbek'
+  name: costmanagement-metrics-operator-fbc-v4-13-kwcp2-d48vq
+  namespace: cost-mgmt-dev-tenant
+spec:
+  releasePlan: costmanagement-metrics-operator-prod-fbc-v4-13
+  snapshot: costmanagement-metrics-operator-fbc-v4-13-kwcp2
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  labels:
+    release.appstudio.openshift.io/author: 'mskarbek'
+  name: costmanagement-metrics-operator-fbc-v4-14-x9fmz-mqcld
+  namespace: cost-mgmt-dev-tenant
+spec:
+  releasePlan: costmanagement-metrics-operator-prod-fbc-v4-14
+  snapshot: costmanagement-metrics-operator-fbc-v4-14-x9fmz
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  labels:
+    release.appstudio.openshift.io/author: 'mskarbek'
+  name: costmanagement-metrics-operator-fbc-v4-15-lw4gl-8mlrv
+  namespace: cost-mgmt-dev-tenant
+spec:
+  releasePlan: costmanagement-metrics-operator-prod-fbc-v4-15
+  snapshot: costmanagement-metrics-operator-fbc-v4-15-lw4gl
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  labels:
+    release.appstudio.openshift.io/author: 'mskarbek'
+  name: costmanagement-metrics-operator-fbc-v4-16-fhqkg-7rhx2
+  namespace: cost-mgmt-dev-tenant
+spec:
+  releasePlan: costmanagement-metrics-operator-prod-fbc-v4-16
+  snapshot: costmanagement-metrics-operator-fbc-v4-16-fhqkg
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  labels:
+    release.appstudio.openshift.io/author: 'mskarbek'
+  name: costmanagement-metrics-operator-fbc-v4-17-z6lpk-fh884
+  namespace: cost-mgmt-dev-tenant
+spec:
+  releasePlan: costmanagement-metrics-operator-prod-fbc-v4-17
+  snapshot: costmanagement-metrics-operator-fbc-v4-17-z6lpk

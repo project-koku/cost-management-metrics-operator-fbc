@@ -4,6 +4,9 @@ kind: Release
 metadata:
   labels:
     release.appstudio.openshift.io/author: 'rh-ee-dnakabaa'
+    release.appstudio.openshift.io/version: '3.3.2'
+    release.appstudio.openshift.io/commit: '55c2d7ab5df7df150a0da532efcade6fa78438b7'
+
   name: costmanagement-metrics-operator-prod-fbc-v4-12-qggnx-1
   namespace: cost-mgmt-dev-tenant
 spec:
@@ -15,6 +18,8 @@ kind: Release
 metadata:
   labels:
     release.appstudio.openshift.io/author: 'rh-ee-dnakabaa'
+    release.appstudio.openshift.io/version: '3.3.2'
+    release.appstudio.openshift.io/commit: '55c2d7ab5df7df150a0da532efcade6fa78438b7'
   name: costmanagement-metrics-operator-prod-fbc-v4-13-wcqp4-1
   namespace: cost-mgmt-dev-tenant
 spec:
@@ -26,6 +31,8 @@ kind: Release
 metadata:
   labels:
     release.appstudio.openshift.io/author: 'rh-ee-dnakabaa'
+    release.appstudio.openshift.io/version: '3.3.2'
+    release.appstudio.openshift.io/commit: '55c2d7ab5df7df150a0da532efcade6fa78438b7'
   name: costmanagement-metrics-operator-prod-fbc-v4-14-k2zlz-1
   namespace: cost-mgmt-dev-tenant
 spec:
@@ -37,6 +44,8 @@ kind: Release
 metadata:
   labels:
     release.appstudio.openshift.io/author: 'rh-ee-dnakabaa'
+    release.appstudio.openshift.io/version: '3.3.2'
+    release.appstudio.openshift.io/commit: '55c2d7ab5df7df150a0da532efcade6fa78438b7'
   name: costmanagement-metrics-operator-prod-fbc-v4-15-gjb9l-1
   namespace: cost-mgmt-dev-tenant
 spec:
@@ -48,6 +57,8 @@ kind: Release
 metadata:
   labels:
     release.appstudio.openshift.io/author: 'rh-ee-dnakabaa'
+    release.appstudio.openshift.io/version: '3.3.2'
+    release.appstudio.openshift.io/commit: '55c2d7ab5df7df150a0da532efcade6fa78438b7'
   name: costmanagement-metrics-operator-prod-fbc-v4-16-rtwxj-1
   namespace: cost-mgmt-dev-tenant
 spec:
@@ -59,6 +70,8 @@ kind: Release
 metadata:
   labels:
     release.appstudio.openshift.io/author: 'rh-ee-dnakabaa'
+    release.appstudio.openshift.io/version: '3.3.2'
+    release.appstudio.openshift.io/commit: '55c2d7ab5df7df150a0da532efcade6fa78438b7'
   name: costmanagement-metrics-operator-prod-fbc-v4-17-26b8h-1
   namespace: cost-mgmt-dev-tenant
 spec:

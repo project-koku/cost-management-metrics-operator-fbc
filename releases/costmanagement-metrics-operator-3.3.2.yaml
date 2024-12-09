@@ -5,7 +5,7 @@ metadata:
   labels:
     release.appstudio.openshift.io/author: "rh-ee-dnakabaa"
   namespace: cost-mgmt-dev-tenant
-  name: costmanagement-metrics-operator-3.3.2-prod-1
+  name: costmanagement-metrics-operator-3.3.2-prod-2
 spec:
   releasePlan: costmanagement-metrics-operator
   snapshot: costmanagement-metrics-operator-dt9d7

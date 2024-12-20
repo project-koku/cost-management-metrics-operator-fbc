@@ -8,6 +8,7 @@ spec:
 
       _Uses `buildah` to create a container image. Its build-time tests are limited to verifying the included catalog and do not scan the image.
       This pipeline is pushed as a Tekton bundle to [quay.io](https://quay.io/repository/konflux-ci/tekton-catalog/pipeline-fbc-builder?tab=tags)_
+
   params:
     - description: Source Repository URL
       name: git-url
@@ -65,14 +66,14 @@ spec:
       description: Path to a file with build arguments for buildah, see https://www.mankier.com/1/buildah-build#--build-arg-file
       name: build-args-file
       type: string
-    - default:
-      - linux/x86_64
-      - linux/arm64
-      # - linux/s390x
-      - linux/ppc64le
-      description: List of platforms to build the container images on. The available set of values is determined by the configuration of the multi-platform-controller.
-      name: build-platforms
-      type: array
+    # - default:
+    #   - linux/x86_64
+    #   - linux/arm64
+    #   # - linux/s390x
+    #   - linux/ppc64le
+    #   description: List of platforms to build the container images on. The available set of values is determined by the configuration of the multi-platform-controller.
+    #   name: build-platforms
+    #   type: array
 
   results:
     - description: ""
@@ -297,7 +298,7 @@ spec:
         operator: in
         values:
         - "false"
-  
+
   workspaces:
     - name: git-auth
       optional: true

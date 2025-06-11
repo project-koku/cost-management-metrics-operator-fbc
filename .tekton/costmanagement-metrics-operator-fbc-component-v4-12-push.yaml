@@ -36,7 +36,7 @@ spec:
       - linux/ppc64le
   pipelineRef:
     name: pipeline-build
-  taskRunTemplate: {}
+
   workspaces:
   - name: git-auth
     secret:

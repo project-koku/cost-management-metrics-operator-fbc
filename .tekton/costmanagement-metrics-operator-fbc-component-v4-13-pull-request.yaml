@@ -18,6 +18,9 @@ metadata:
   name: costmanagement-metrics-operator-fbc-component-v4-13-on-pull-request
   namespace: cost-mgmt-dev-tenant
 spec:
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-costmanagement-metrics-operator-fbc-component-v4-13
+
   params:
   - name: git-url
     value: '{{source_url}}'
@@ -37,7 +40,6 @@ spec:
       - linux/ppc64le
   pipelineRef:
     name: pipeline-build
-  taskRunTemplate: {}
   workspaces:
   - name: git-auth
     secret:

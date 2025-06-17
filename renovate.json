@@ -1,0 +1,20 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": [
+        "github>konflux-ci/mintmaker-presets:group-python-poetry"
+    ],
+    "tekton": {
+        "includePaths": [
+            ".tekton/**"
+        ]
+    },
+    "ignorePaths": [
+        "Dockerfile.v4-12",
+        "Dockerfile.v4-13",
+        "Dockerfile.v4-14",
+        "Dockerfile.v4-15",
+        "Dockerfile.v4-16",
+        "Dockerfile.v4-17",
+        "Dockerfile.v4-18"
+    ]
+}

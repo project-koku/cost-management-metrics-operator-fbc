@@ -5,12 +5,15 @@ File-Based Catalog for Cost Management Metrics Operator
 **NOTE**: The catalog and bundle metadata format are dependent on the OCP version:
 
   * **OCP >= 4.17:**
-      * The catalog is stored in [catalog](catalog).
-      * Bundle metadata must use the `olm.csv.metadata` format.
+    * The catalog is stored in [catalog](catalog).
+    * Bundle metadata must use the `olm.csv.metadata` format.
 
   * **OCP <= 4.16:**
-      * The catalog is stored in [catalog-old](catalog-old).
-      * Bundle metadata must use the `olm.bundle.object` format.
+    * The catalog is stored in [catalog-old](catalog-old).
+    * Bundle metadata must use the `olm.bundle.object` format.
+
+  * **OCP (4.12, 4.13):**
+    * OCP stopped multiarch builds for ose-operator-registry for these versions. The images built are for `x86_64` only.
 
 ## How to update
 

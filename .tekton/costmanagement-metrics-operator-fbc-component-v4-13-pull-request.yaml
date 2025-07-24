@@ -37,10 +37,8 @@ spec:
     value: Dockerfile.v4-13
   - name: build-platforms
     value:
+      # The image is built only for x86_64 because OCP stopped multiarch builds for ose-operator-registry:v4.13.
       - linux/x86_64
-      - linux/arm64
-      # - linux/s390x
-      - linux/ppc64le
   pipelineRef:
     name: pipeline-build
   workspaces:

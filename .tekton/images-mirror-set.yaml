@@ -4,9 +4,15 @@ metadata:
   name: costmanagement-metrics-operator-fips-image-mirror-set
 spec:
   imageDigestMirrors:
-    - mirrors:
-      - quay.io/redhat-user-workloads/cost-mgmt-dev-tenant/costmanagement-metrics-operator/costmanagement-metrics-operator
-      source: registry.redhat.io/costmanagement/costmanagement-metrics-rhel9-operator
-    - mirrors:
-      - quay.io/redhat-user-workloads/cost-mgmt-dev-tenant/costmanagement-metrics-operator/costmanagement-metrics-operator-bundle
-      source: registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle
+    - source: registry.redhat.io/costmanagement/costmanagement-metrics-rhel9-operator
+      mirrors:
+        - quay.io/redhat-user-workloads/cost-mgmt-dev-tenant/costmanagement-metrics-operator/costmanagement-metrics-operator
+    - source: registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle
+      mirrors:
+        - quay.io/redhat-user-workloads/cost-mgmt-dev-tenant/costmanagement-metrics-operator/costmanagement-metrics-operator-bundle
+    - source: registry.stage.redhat.io/costmanagement/costmanagement-metrics-rhel9-operator
+      mirrors:
+        - quay.io/redhat-user-workloads/cost-mgmt-dev-tenant/costmanagement-metrics-operator/costmanagement-metrics-operator
+    - source: registry.stage.redhat.io/costmanagement/costmanagement-metrics-operator-bundle
+      mirrors:
+        - quay.io/redhat-user-workloads/cost-mgmt-dev-tenant/costmanagement-metrics-operator/costmanagement-metrics-operator-bundle

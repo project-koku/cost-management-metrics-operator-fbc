@@ -1,8 +1,8 @@
-VERSION ?= 3.3.2
-PREVIOUS_VERSION ?= 3.3.1
+VERSION ?= 4.0.0
+PREVIOUS_VERSION ?= 3.3.2
 USER_WORKLOAD_REPO ?= quay.io/redhat-user-workloads/cost-mgmt-dev-tenant/costmanagement-metrics-operator/costmanagement-metrics-operator-bundle
 REGISTRY_REPO ?= registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle
-REGISTRY_SHA ?= sha256:448e65667b5c167699778b0056a18b31dc7ed95022c803217a2786d27d21e945
+REGISTRY_SHA ?= sha256:38a14dd2c566ff2f152ec4d4b949e43610fe6091a5521bf63f094d7aaa77da70
 
 PWD=$(shell pwd)
 OPERATOR_NAME=costmanagement-metrics-operator
@@ -22,6 +22,9 @@ OPERATOR_CATALOG_TEMPLATE_DIR = ${PWD}/catalog-template
 CATALOG_TEMPLATE_FILENAME = basic-template.yaml
 
 # Define the paths for both auth files
+# NOTE: OPM v1.53.0+ a defined policy.json file in $HOME/.config/containers
+# see release notes: https://github.com/operator-framework/operator-registry/releases/tag/v1.53.0
+# You can follow this gist for a local compliant environment: https://gist.github.com/grokspawn/5d00e53c36b5a7b93a56549a7eebda91#readme.md
 DOCKER_CONFIG := $(HOME)/.docker/config.json
 CONTAINERS_AUTH := $(XDG_RUNTIME_DIR)/containers/auth.json
 
@@ -29,14 +32,14 @@ CONTAINERS_AUTH := $(XDG_RUNTIME_DIR)/containers/auth.json
 # This list can be customized to include the versions that are relevant to the operator
 # DO NOT change this line (except for the versions) if you want to take advantage
 # of the automated catalog promotion
-OCP_VERSIONS=$(shell echo "v4.12 v4.13 v4.14 v4.15 v4.16 v4.17" )
+OCP_VERSIONS=$(shell echo "v4.12 v4.13 v4.14 v4.15 v4.16 v4.17 v4.18 v4.19")
 
 OS=$(shell go env GOOS)
 ARCH=$(shell go env GOARCH)
 
-OPM_VERSION ?= v1.48.0
+OPM_VERSION ?= v1.56.0
 OPM_FILENAME ?= opm-$(OPM_VERSION)
-YQ_VERSION ?= v4.44.5
+YQ_VERSION ?= v4.45.4
 YQ_FILENAME ?= yq-$(YQ_VERSION)
 
 ## Location to install dependencies to

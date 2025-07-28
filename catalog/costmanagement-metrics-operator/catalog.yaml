@@ -6886,7 +6886,7 @@ relatedImages:
   name: costmanagement-metrics-operator
 schema: olm.bundle
 ---
-image: registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle@sha256:38a14dd2c566ff2f152ec4d4b949e43610fe6091a5521bf63f094d7aaa77da70
+image: registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle@sha256:6e25e20efbe423245fa14f689965105147ef8a94e0c393b1fdbcd8ce9590d521
 name: costmanagement-metrics-operator.4.0.0
 package: costmanagement-metrics-operator
 properties:
@@ -6939,7 +6939,7 @@ properties:
       capabilities: Seamless Upgrades
       categories: Monitoring
       certified: "true"
-      containerImage: registry.redhat.io/costmanagement/costmanagement-metrics-rhel9-operator@sha256:290a34cd6393b53c55ab479670e9ffb1b3c6629bf3ceca46a69ab3da1cb6858d
+      containerImage: registry.redhat.io/costmanagement/costmanagement-metrics-rhel9-operator@sha256:8f0ae76636e3d3f937c733e9178426db16dad24dc54cd02c1a80fcf95cb46821
       createdAt: "2025-06-10T13:37:20Z"
       description: A Golang-based OpenShift Operator that generates and uploads OpenShift
         usage metrics to cost management.
@@ -7345,8 +7345,8 @@ properties:
     provider:
       name: Red Hat
 relatedImages:
-- image: registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle@sha256:38a14dd2c566ff2f152ec4d4b949e43610fe6091a5521bf63f094d7aaa77da70
+- image: registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle@sha256:6e25e20efbe423245fa14f689965105147ef8a94e0c393b1fdbcd8ce9590d521
   name: ""
-- image: registry.redhat.io/costmanagement/costmanagement-metrics-rhel9-operator@sha256:290a34cd6393b53c55ab479670e9ffb1b3c6629bf3ceca46a69ab3da1cb6858d
+- image: registry.redhat.io/costmanagement/costmanagement-metrics-rhel9-operator@sha256:8f0ae76636e3d3f937c733e9178426db16dad24dc54cd02c1a80fcf95cb46821
   name: ""
 schema: olm.bundle

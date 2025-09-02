@@ -1,0 +1,19 @@
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  labels:
+    release.appstudio.openshift.io/author: "rh-ee-dnakabaa"
+  namespace: cost-mgmt-dev-tenant
+  name: costmanagement-metrics-operator-4.1.0-prod-1
+spec:
+  releasePlan: costmanagement-metrics-operator
+  snapshot: costmanagement-metrics-operator-jtxm4
+  data:
+    releaseNotes:
+      type: RHEA
+      topic: "Cost Management Metrics Operator version 4.1.0 release."
+      issues:
+        fixed:
+          - id: COST-5374
+            source: issues.redhat.com

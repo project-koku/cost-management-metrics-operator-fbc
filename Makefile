@@ -1,8 +1,8 @@
-VERSION ?= 4.1.0
-PREVIOUS_VERSION ?= 4.0.0
+VERSION ?= 4.2.0
+PREVIOUS_VERSION ?= 4.1.0
 USER_WORKLOAD_REPO ?= quay.io/redhat-user-workloads/cost-mgmt-dev-tenant/costmanagement-metrics-operator/costmanagement-metrics-operator-bundle
 REGISTRY_REPO ?= registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle
-REGISTRY_SHA ?= sha256:84d65eed99300b0ba87369cbf9a9fc17a37781f8b6f9de2819d0a159f9071a6c
+REGISTRY_SHA ?= sha256:ef11e3f005465720c3ad1567f5436fbecd2254e4b29be7dee2fd4ee7c4307e31
 
 PWD=$(shell pwd)
 OPERATOR_NAME=costmanagement-metrics-operator

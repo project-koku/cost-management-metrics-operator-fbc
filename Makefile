@@ -1,8 +1,8 @@
-VERSION ?= 4.1.0
-PREVIOUS_VERSION ?= 4.0.0
+VERSION ?= 4.2.0
+PREVIOUS_VERSION ?= 4.1.0
 USER_WORKLOAD_REPO ?= quay.io/redhat-user-workloads/cost-mgmt-dev-tenant/costmanagement-metrics-operator/costmanagement-metrics-operator-bundle
 REGISTRY_REPO ?= registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle
-REGISTRY_SHA ?= sha256:84d65eed99300b0ba87369cbf9a9fc17a37781f8b6f9de2819d0a159f9071a6c
+REGISTRY_SHA ?= sha256:ef11e3f005465720c3ad1567f5436fbecd2254e4b29be7dee2fd4ee7c4307e31
 
 PWD=$(shell pwd)
 OPERATOR_NAME=costmanagement-metrics-operator
@@ -32,7 +32,7 @@ CONTAINERS_AUTH := $(XDG_RUNTIME_DIR)/containers/auth.json
 # This list can be customized to include the versions that are relevant to the operator
 # DO NOT change this line (except for the versions) if you want to take advantage
 # of the automated catalog promotion
-OCP_VERSIONS=$(shell echo "v4.12 v4.13 v4.14 v4.15 v4.16 v4.17 v4.18 v4.19")
+OCP_VERSIONS=$(shell echo "v4.12 v4.13 v4.14 v4.15 v4.16 v4.17 v4.18 v4.19 v4.20")
 
 OS=$(shell go env GOOS)
 ARCH=$(shell go env GOARCH)

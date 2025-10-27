@@ -49,7 +49,7 @@ metadata:
     release.appstudio.openshift.io/author: 'rh-ee-dnakabaa'
     release.appstudio.openshift.io/version: '4.2.0'
     release.appstudio.openshift.io/sha: '6ae051ff4944895998b18b6b3b51af89742f3fa5'
-  name: costmanagement-metrics-operator-prod-fbc-v4-15-xhcts-2
+  name: costmanagement-metrics-operator-prod-fbc-v4-15-xhcts-3
   namespace: cost-mgmt-dev-tenant
 spec:
   releasePlan: costmanagement-metrics-operator-fbc-v4-15

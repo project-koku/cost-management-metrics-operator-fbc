@@ -8302,7 +8302,7 @@ relatedImages:
   name: ""
 schema: olm.bundle
 ---
-image: registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle@sha256:5597e41b20ea369a80a68f3df23f6b610b6baee66aa86bec5d5530bacfde7802
+image: registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle@sha256:0a1304e6847c7a8cd2b6ee68a9ede60cee7ef3327564a27863a91284663ab476
 name: costmanagement-metrics-operator.4.3.0
 package: costmanagement-metrics-operator
 properties:
@@ -8446,6 +8446,9 @@ properties:
       * The operator can create an integration in console.redhat.com. An integration is required for Cost Management to process the uploaded packages.
       * PersistentVolumeClaim (PVC) configuration: The CostManagementMetricsConfig CR can accept a PVC definition and the operator will create and mount the PVC. If one is not provided, a default PVC will be created.
       * Restricted network installation: this operator can function on a restricted network. In this mode, the operator stores the packaged reports for manual retrieval.
+
+      ## New in v4.3.0:
+      * Enabled gathering and reporting NVIDIA GPU metrics for cost management.
 
       ## New in v4.2.0:
       * Enabled gathering and reporting NVIDIA GPU metrics for resource optimization.
@@ -8771,7 +8774,7 @@ properties:
     provider:
       name: Red Hat
 relatedImages:
-- image: registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle@sha256:5597e41b20ea369a80a68f3df23f6b610b6baee66aa86bec5d5530bacfde7802
+- image: registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle@sha256:0a1304e6847c7a8cd2b6ee68a9ede60cee7ef3327564a27863a91284663ab476
   name: ""
 - image: registry.redhat.io/costmanagement/costmanagement-metrics-rhel9-operator@sha256:e8421e7b440426a4643411919bcd78eed596b847868804721c9aca0df5eafd3a
   name: ""

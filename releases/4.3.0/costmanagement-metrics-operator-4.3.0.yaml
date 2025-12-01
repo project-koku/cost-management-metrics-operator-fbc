@@ -17,6 +17,8 @@ spec:
         fixed:
           - id: COST-6890
             source: issues.redhat.com
+          - id: COST-1385
+            source: issues.redhat.com
       cves:
         - key: CVE-2025-9230
           component: costmanagement-metrics-operator

@@ -62,15 +62,6 @@ spec:
     default: oci
     type: string
     description: The format for the resulting image's mediaType. Valid values are oci or docker.
-  # - default:
-  #   - linux/x86_64
-  #   - linux/arm64
-  #   # - linux/s390x
-  #   - linux/ppc64le
-  #   description: List of platforms to build the container images on. The available set of values is determined by the configuration of the multi-platform-controller.
-  #   name: build-platforms
-  #   type: array
-
   - name: enable-cache-proxy
     default: 'false'
     description: Enable cache proxy configuration
@@ -314,8 +305,7 @@ spec:
       operator: in
       values:
       - "false"
-  # TODO: Uncomment this after v4.16 failures are fixed
-  # REF: (https://issues.redhat.com/browse/KFLUXSPRT-7023, https://issues.redhat.com/browse/KFLUXSPRT-7030)
+  # TODO: Uncomment after v4.16 fix (KFLUXSPRT-7023, KFLUXSPRT-7030)
   # - name: fbc-fips-check-oci-ta
   #   params:
   #   - name: image-digest

@@ -124,3 +124,17 @@ metadata:
 spec:
   releasePlan: costmanagement-metrics-operator-fbc-v4-20
   snapshot: costmanagement-metrics-operator-fbc-v4-20-20260224-180117-000
+
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  labels:
+    release.appstudio.openshift.io/author: 'rh-ee-dnakabaa'
+    release.appstudio.openshift.io/version: '4.3.1'
+    release.appstudio.openshift.io/sha: '63095fd909764c536ae82beba6059d5d34218f70'
+  name: costmanagement-metrics-operator-fbc-v4-21-20260413-123133-000-1
+  namespace: cost-mgmt-dev-tenant
+spec:
+  releasePlan: costmanagement-metrics-operator-fbc-v4-21
+  snapshot: costmanagement-metrics-operator-fbc-v4-21-20260413-123133-000

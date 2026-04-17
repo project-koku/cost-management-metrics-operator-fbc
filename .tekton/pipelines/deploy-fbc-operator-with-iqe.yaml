@@ -375,6 +375,17 @@ spec:
                 value: $(params.clusterName)
               - name: credentials
                 value: credentials
+          - name: prepare-kubeconfig
+            image: registry.access.redhat.com/ubi9/ubi-minimal
+            volumeMounts:
+              - name: credentials
+                mountPath: /credentials
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+              mkdir -p /tekton/home/.kube
+              cp "/credentials/$(steps.get-kubeconfig.results.kubeconfig)" /tekton/home/.kube/config
+              chmod 0600 /tekton/home/.kube/config
           - name: install-operator
             onError: continue
             ref:
@@ -395,12 +406,6 @@ spec:
                 value: "$(params.packageName)"
               - name: channelName
                 value: "$(params.channelName)"
-            env:
-              - name: KUBECONFIG
-                value: "/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
-            volumeMounts:
-              - name: credentials
-                mountPath: /credentials
           - name: write-empty-image-pull-events
             image: registry.access.redhat.com/ubi9/ubi-minimal
             script: |

@@ -1,0 +1,16 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: deploy-fbc-operator-with-iqe-run-v4-20
+  labels:
+    upstream-usable: "true"
+spec:
+  pipelineRef:
+    resolver: git
+    params:
+      - name: url
+        value: https://github.com/project-koku/cost-management-metrics-operator-fbc.git
+      - name: revision
+        value: main
+      - name: pathInRepo
+        value: .tekton/pipelines/deploy-fbc-operator-with-iqe.yaml

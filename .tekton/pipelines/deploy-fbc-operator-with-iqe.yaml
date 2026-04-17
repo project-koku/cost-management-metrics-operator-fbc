@@ -1,0 +1,479 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: deploy-fbc-operator-with-iqe
+spec:
+  description: >
+    Extension pipeline that preserves deploy-fbc-operator baseline behavior and
+    inserts IQE execution after operator deployment.
+  params:
+    - name: SNAPSHOT
+      type: string
+      description: Integration snapshot payload.
+    - name: PACKAGE_NAME
+      type: string
+      default: costmanagement-metrics-operator
+    - name: CHANNEL_NAME
+      type: string
+      default: stable
+    - name: CREDENTIALS_SECRET_NAME
+      type: string
+      description: Registry credentials used for artifact publishing.
+    - name: OCI_REF
+      type: string
+      description: OCI artifact target for test artifacts.
+    - name: PATH_TO_MIRROR_SET
+      type: string
+      description: Path to ImageDigestMirrorSet file in source repo.
+      default: .tekton/images-mirror-set.yaml
+    - name: REPO_TOKEN
+      type: string
+      description: Secret name containing token for private source repository.
+      default: ""
+    - name: REPO_KEY
+      type: string
+      description: Secret key name containing private source token.
+      default: ""
+    - name: IQE_PLUGINS
+      type: string
+      default: cost_management
+    - name: IQE_MARKER_EXPRESSION
+      type: string
+      default: cost_operator
+    - name: IQE_FILTER_EXPRESSION
+      type: string
+      default: ""
+    - name: IQE_ENV
+      type: string
+      default: prod
+    - name: IQE_EXTRA_ARGS
+      type: string
+      default: ""
+  tasks:
+    - name: parse-metadata
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/konflux-ci/integration-examples
+          - name: revision
+            value: main
+          - name: pathInRepo
+            value: tasks/test_metadata.yaml
+      params:
+        - name: SNAPSHOT
+          value: $(params.SNAPSHOT)
+
+    - name: provision-eaas-space
+      runAfter:
+        - parse-metadata
+      when:
+        - input: $(tasks.parse-metadata.results.test-event-type)
+          operator: in
+          values: ["push", "Push"]
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/konflux-ci/build-definitions.git
+          - name: revision
+            value: main
+          - name: pathInRepo
+            value: task/eaas-provision-space/0.1/eaas-provision-space.yaml
+      params:
+        - name: ownerName
+          value: $(context.pipelineRun.name)
+        - name: ownerUid
+          value: $(context.pipelineRun.uid)
+
+    - name: fetch-config-files
+      runAfter:
+        - provision-eaas-space
+      when:
+        - input: $(tasks.parse-metadata.results.test-event-type)
+          operator: in
+          values: ["push", "Push"]
+      taskSpec:
+        results:
+          - name: mirrorSetYaml
+            description: Contents of the mirror set yaml file.
+          - name: serializedMirrorSetYaml
+            description: Mirror entries used for imageContentSources.
+        steps:
+          - name: retrieve-mirror-set
+            image: quay.io/konflux-ci/konflux-test:v1.4.48
+            env:
+              - name: SOURCE_GIT_URL
+                value: "$(tasks.parse-metadata.results.source-git-url)"
+              - name: SOURCE_GIT_REVISION
+                value: "$(tasks.parse-metadata.results.source-git-revision)"
+              - name: PATH_TO_MIRROR_SET
+                value: $(params.PATH_TO_MIRROR_SET)
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+              mirror_set_url="${SOURCE_GIT_URL}/raw/${SOURCE_GIT_REVISION}/${PATH_TO_MIRROR_SET}"
+              mirror_set_yaml=$(curl -kfLs "$mirror_set_url" 2>/dev/null)
+              if [[ -z "${mirror_set_yaml}" ]]; then
+                echo "Could not fetch image mirror set at ${mirror_set_url}."
+                exit 1
+              fi
+
+              echo -n "${mirror_set_yaml}" > "$(results.mirrorSetYaml.path)"
+              # Cluster provisioning step accepts YAML list in string form.
+              echo -n "${mirror_set_yaml}" > "$(results.serializedMirrorSetYaml.path)"
+
+    - name: get-unreleased-bundle
+      runAfter:
+        - fetch-config-files
+      when:
+        - input: $(tasks.parse-metadata.results.test-event-type)
+          operator: in
+          values: ["push", "Push"]
+      taskSpec:
+        results:
+          - name: unreleasedBundle
+            description: Unreleased bundle image (or mirrored variant).
+          - name: packageName
+            description: Resolved package name.
+            value: "$(steps.get-unreleased-bundle.results.packageName)"
+          - name: channelName
+            description: Resolved channel name.
+            value: "$(steps.get-unreleased-bundle.results.channelName)"
+        steps:
+          - name: get-unreleased-bundle
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/tekton-integration-catalog.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/bundles/get-unreleased-bundle/0.1/get-unreleased-bundle.yaml
+            params:
+              - name: fbcFragment
+                value: "$(tasks.parse-metadata.results.component-container-image)"
+              - name: packageName
+                value: $(params.PACKAGE_NAME)
+              - name: channelName
+                value: $(params.CHANNEL_NAME)
+          - name: process-image-mirror-set
+            image: quay.io/konflux-ci/konflux-test:v1.4.48
+            env:
+              - name: BUNDLE_IMAGE
+                value: "$(steps.get-unreleased-bundle.results.unreleasedBundle)"
+              - name: MIRROR_SET_YAML
+                value: "$(tasks.fetch-config-files.results.mirrorSetYaml)"
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+              . /utils.sh
+              replaced_image=""
+
+              if [[ -z "${BUNDLE_IMAGE}" || "${BUNDLE_IMAGE}" == "null" ]]; then
+                echo -n "$replaced_image" > "$(results.unreleasedBundle.path)"
+                exit 0
+              fi
+
+              if skopeo inspect --no-tags --config "docker://${BUNDLE_IMAGE}" > /dev/null 2>&1; then
+                echo -n "$BUNDLE_IMAGE" > "$(results.unreleasedBundle.path)"
+                exit 0
+              fi
+
+              process_image_digest_mirror_set "$MIRROR_SET_YAML" > /tekton/home/mirror-map.txt
+              reg_and_repo=$(get_image_registry_and_repository "${BUNDLE_IMAGE}")
+              mirrors=$(jq -r --arg source "${reg_and_repo}" '.[$source][]?' /tekton/home/mirror-map.txt)
+
+              if [[ -z "$mirrors" ]]; then
+                echo "No mirrors listed for $reg_and_repo in mirror map."
+                exit 1
+              fi
+
+              for mirror in $mirrors; do
+                replaced_image=$(replace_image_pullspec "$BUNDLE_IMAGE" "$mirror")
+                if skopeo inspect --no-tags --config "docker://${replaced_image}" > /dev/null 2>&1; then
+                  echo -n "$replaced_image" > "$(results.unreleasedBundle.path)"
+                  exit 0
+                fi
+              done
+
+              echo "No working mirrors found for $reg_and_repo"
+              exit 1
+
+    - name: pick-cluster-params
+      runAfter:
+        - get-unreleased-bundle
+      when:
+        - input: "$(tasks.get-unreleased-bundle.results.unreleasedBundle)"
+          operator: notin
+          values: [""]
+        - input: $(tasks.parse-metadata.results.test-event-type)
+          operator: in
+          values: ["push", "Push"]
+      taskSpec:
+        results:
+          - name: ocpVersion
+            value: "$(steps.pick-cluster-version.results.ocpVersion)"
+          - name: bundleArch
+            value: "$(steps.pick-cluster-arch.results.bundleArch)"
+        steps:
+          - name: get-supported-versions
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/build-definitions.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/eaas-get-supported-ephemeral-cluster-versions/0.1/eaas-get-supported-ephemeral-cluster-versions.yaml
+            params:
+              - name: eaasSpaceSecretRef
+                value: "$(tasks.provision-eaas-space.results.secretRef)"
+          - name: pick-cluster-version
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/tekton-integration-catalog.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/bundles/pick-cluster-version/0.1/pick-cluster-version.yaml
+            params:
+              - name: fbcFragment
+                value: "$(tasks.parse-metadata.results.component-container-image)"
+              - name: clusterVersions
+                value: ["$(steps.get-supported-versions.results.versions[*])"]
+          - name: pick-cluster-arch
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/tekton-integration-catalog.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/bundles/pick-cluster-arch/0.1/pick-cluster-arch.yaml
+            params:
+              - name: bundleImage
+                value: "$(tasks.get-unreleased-bundle.results.unreleasedBundle)"
+
+    - name: provision-cluster
+      runAfter:
+        - pick-cluster-params
+      when:
+        - input: "$(tasks.get-unreleased-bundle.results.unreleasedBundle)"
+          operator: notin
+          values: [""]
+        - input: "$(tasks.pick-cluster-params.results.ocpVersion)"
+          operator: notin
+          values: [""]
+        - input: "$(tasks.pick-cluster-params.results.bundleArch)"
+          operator: notin
+          values: [""]
+        - input: $(tasks.parse-metadata.results.test-event-type)
+          operator: in
+          values: ["push", "Push"]
+      taskSpec:
+        results:
+          - name: clusterName
+            value: "$(steps.create-cluster.results.clusterName)"
+        steps:
+          - name: get-latest-version-tag
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/build-definitions.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/eaas-get-latest-openshift-version-by-prefix/0.1/eaas-get-latest-openshift-version-by-prefix.yaml
+            params:
+              - name: prefix
+                value: "$(tasks.pick-cluster-params.results.ocpVersion)"
+          - name: create-cluster
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/build-definitions.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/eaas-create-ephemeral-cluster-hypershift-aws/0.1/eaas-create-ephemeral-cluster-hypershift-aws.yaml
+            params:
+              - name: eaasSpaceSecretRef
+                value: $(tasks.provision-eaas-space.results.secretRef)
+              - name: version
+                value: "$(steps.get-latest-version-tag.results.version)"
+              - name: instanceType
+                value: "$(tasks.pick-cluster-params.results.bundleArch)"
+              - name: imageContentSources
+                value: "$(tasks.fetch-config-files.results.serializedMirrorSetYaml)"
+
+    - name: deploy-operator
+      runAfter:
+        - provision-cluster
+      when:
+        - input: "$(tasks.get-unreleased-bundle.results.unreleasedBundle)"
+          operator: notin
+          values: [""]
+        - input: $(tasks.parse-metadata.results.test-event-type)
+          operator: in
+          values: ["push", "Push"]
+      params:
+        - name: eaasSpaceSecretRef
+          value: $(tasks.provision-eaas-space.results.secretRef)
+        - name: clusterName
+          value: "$(tasks.provision-cluster.results.clusterName)"
+        - name: fbcFragment
+          value: "$(tasks.parse-metadata.results.component-container-image)"
+        - name: bundleImage
+          value: "$(tasks.get-unreleased-bundle.results.unreleasedBundle)"
+        - name: packageName
+          value: "$(tasks.get-unreleased-bundle.results.packageName)"
+        - name: channelName
+          value: "$(tasks.get-unreleased-bundle.results.channelName)"
+      taskSpec:
+        results:
+          - name: imagesPulledAfterDeploymentStart
+            description: Image pulls tracked after operator deployment.
+        params:
+          - name: eaasSpaceSecretRef
+            type: string
+          - name: clusterName
+            type: string
+          - name: fbcFragment
+            type: string
+          - name: bundleImage
+            type: string
+          - name: packageName
+            type: string
+          - name: channelName
+            type: string
+        volumes:
+          - name: credentials
+            emptyDir: {}
+        steps:
+          - name: get-kubeconfig
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/build-definitions.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/eaas-get-ephemeral-cluster-credentials/0.1/eaas-get-ephemeral-cluster-credentials.yaml
+            params:
+              - name: eaasSpaceSecretRef
+                value: $(params.eaasSpaceSecretRef)
+              - name: clusterName
+                value: $(params.clusterName)
+              - name: credentials
+                value: credentials
+          - name: install-operator
+            onError: continue
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/tekton-integration-catalog.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/bundles/install-operator/0.1/install-operator.yaml
+            params:
+              - name: fbcFragment
+                value: "$(params.fbcFragment)"
+              - name: bundleImage
+                value: "$(params.bundleImage)"
+              - name: packageName
+                value: "$(params.packageName)"
+              - name: channelName
+                value: "$(params.channelName)"
+            env:
+              - name: KUBECONFIG
+                value: "/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
+            volumeMounts:
+              - name: credentials
+                mountPath: /credentials
+          - name: write-empty-image-pull-events
+            image: registry.access.redhat.com/ubi9/ubi-minimal
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+              # TODO: Replace with collected image pulls from deployment step.
+              echo -n "" > "$(results.imagesPulledAfterDeploymentStart.path)"
+          - name: fail-if-any-step-failed
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/tekton-integration-catalog.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/fail-if-any-step-failed/0.1/fail-if-any-step-failed.yaml
+
+    - name: run-iqe-cost-operator
+      runAfter:
+        - deploy-operator
+      when:
+        - input: $(tasks.parse-metadata.results.test-event-type)
+          operator: in
+          values: ["push", "Push"]
+      params:
+        - name: EAAS_SPACE_SECRET_REF
+          value: $(tasks.provision-eaas-space.results.secretRef)
+        - name: CLUSTER_NAME
+          value: $(tasks.provision-cluster.results.clusterName)
+        - name: IQE_PLUGINS
+          value: $(params.IQE_PLUGINS)
+        - name: IQE_MARKER_EXPRESSION
+          value: $(params.IQE_MARKER_EXPRESSION)
+        - name: IQE_FILTER_EXPRESSION
+          value: $(params.IQE_FILTER_EXPRESSION)
+        - name: IQE_ENV
+          value: $(params.IQE_ENV)
+        - name: IQE_EXTRA_ARGS
+          value: $(params.IQE_EXTRA_ARGS)
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: "$(tasks.parse-metadata.results.source-git-url)"
+          - name: revision
+            value: "$(tasks.parse-metadata.results.source-git-revision)"
+          - name: pathInRepo
+            value: .tekton/tasks/run-iqe-cost-operator.yaml
+
+    - name: verify-image-sources
+      runAfter:
+        - run-iqe-cost-operator
+      when:
+        - input: "$(tasks.deploy-operator.results.imagesPulledAfterDeploymentStart)"
+          operator: notin
+          values: [""]
+        - input: $(tasks.parse-metadata.results.test-event-type)
+          operator: in
+          values: ["push", "Push"]
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/konflux-ci/tekton-integration-catalog.git
+          - name: revision
+            value: main
+          - name: pathInRepo
+            value: tasks/bundles/verify-image-sources/0.1/verify-image-sources.yaml
+      params:
+        - name: imagesPulledAfterDeploymentStart
+          value: "$(tasks.deploy-operator.results.imagesPulledAfterDeploymentStart)"
+        - name: bundleImage
+          value: "$(tasks.get-unreleased-bundle.results.unreleasedBundle)"
+        - name: scorecardConfigImages
+          value: ""

@@ -1,0 +1,103 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: run-iqe-cost-operator
+spec:
+  description: >
+    Runs IQE cost management operator tests against a provisioned cluster.
+    This task is intended to run after deploy-fbc-operator completes operator install.
+  params:
+    - name: EAAS_SPACE_SECRET_REF
+      type: string
+      description: Secret reference returned by EaaS space provisioning task.
+    - name: CLUSTER_NAME
+      type: string
+      description: Provisioned ephemeral cluster name.
+    - name: IQE_IMAGE
+      type: string
+      description: Container image that provides iqe CLI/runtime.
+      default: quay.io/cloudservices/iqe-core:latest
+    - name: IQE_PLUGINS
+      type: string
+      description: IQE plugin list.
+      default: "cost_management"
+    - name: IQE_MARKER_EXPRESSION
+      type: string
+      description: IQE marker expression.
+      default: "cost_operator"
+    - name: IQE_FILTER_EXPRESSION
+      type: string
+      description: Optional IQE filter expression.
+      default: ""
+    - name: IQE_ENV
+      type: string
+      description: Target IQE environment profile.
+      default: "prod"
+    - name: IQE_EXTRA_ARGS
+      type: string
+      description: Additional IQE CLI args.
+      default: ""
+    - name: DYNACONF_IQE_VAULT_URL
+      type: string
+      default: "https://vault.devshift.net/"
+    - name: DYNACONF_IQE_VAULT_MOUNT_POINT
+      type: string
+      default: "insights"
+    - name: DYNACONF_IQE_VAULT_VERIFY
+      type: string
+      default: "true"
+    - name: DYNACONF_IQE_VAULT_OIDC_AUTH
+      type: string
+      default: "1"
+  volumes:
+    - name: credentials
+      emptyDir: {}
+  steps:
+    - name: get-kubeconfig
+      ref:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/konflux-ci/build-definitions.git
+          - name: revision
+            value: main
+          - name: pathInRepo
+            value: stepactions/eaas-get-ephemeral-cluster-credentials/0.1/eaas-get-ephemeral-cluster-credentials.yaml
+      params:
+        - name: eaasSpaceSecretRef
+          value: $(params.EAAS_SPACE_SECRET_REF)
+        - name: clusterName
+          value: $(params.CLUSTER_NAME)
+        - name: credentials
+          value: credentials
+    - name: run-iqe
+      image: $(params.IQE_IMAGE)
+      volumeMounts:
+        - name: credentials
+          mountPath: /credentials
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+
+        echo "Starting IQE operator tests..."
+        echo "Plugins: $(params.IQE_PLUGINS)"
+        echo "Marker: $(params.IQE_MARKER_EXPRESSION)"
+        IQE_FILTER_EXPRESSION="$(params.IQE_FILTER_EXPRESSION)"
+        IQE_EXTRA_ARGS="$(params.IQE_EXTRA_ARGS)"
+        if [[ -n "${IQE_FILTER_EXPRESSION}" ]]; then
+          echo "Filter: ${IQE_FILTER_EXPRESSION}"
+        fi
+
+        export DYNACONF_IQE_VAULT_LOADER_ENABLED=true
+        export DYNACONF_IQE_VAULT_URL="$(params.DYNACONF_IQE_VAULT_URL)"
+        export DYNACONF_IQE_VAULT_VERIFY="$(params.DYNACONF_IQE_VAULT_VERIFY)"
+        export DYNACONF_IQE_VAULT_MOUNT_POINT="$(params.DYNACONF_IQE_VAULT_MOUNT_POINT)"
+        export DYNACONF_IQE_VAULT_OIDC_AUTH="$(params.DYNACONF_IQE_VAULT_OIDC_AUTH)"
+        export ENV_FOR_DYNACONF="$(params.IQE_ENV)"
+        export KUBECONFIG="/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
+        echo "Using kubeconfig: ${KUBECONFIG}"
+
+        # The task expects iqe CLI to be present in IQE_IMAGE.
+        iqe tests plugin "$(params.IQE_PLUGINS)" -m "$(params.IQE_MARKER_EXPRESSION)" \
+          ${IQE_FILTER_EXPRESSION:+-k "${IQE_FILTER_EXPRESSION}"} \
+          ${IQE_EXTRA_ARGS}

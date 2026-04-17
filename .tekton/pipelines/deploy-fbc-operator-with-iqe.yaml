@@ -449,15 +449,88 @@ spec:
           value: $(params.IQE_ENV)
         - name: IQE_EXTRA_ARGS
           value: $(params.IQE_EXTRA_ARGS)
-      taskRef:
-        resolver: git
+      taskSpec:
         params:
-          - name: url
-            value: https://github.com/project-koku/cost-management-metrics-operator-fbc.git
-          - name: revision
-            value: main
-          - name: pathInRepo
-            value: .tekton/tasks/run-iqe-cost-operator.yaml
+          - name: EAAS_SPACE_SECRET_REF
+            type: string
+          - name: CLUSTER_NAME
+            type: string
+          - name: IQE_IMAGE
+            type: string
+            default: quay.io/cloudservices/iqe-core:latest
+          - name: IQE_PLUGINS
+            type: string
+            default: cost_management
+          - name: IQE_MARKER_EXPRESSION
+            type: string
+            default: cost_operator
+          - name: IQE_FILTER_EXPRESSION
+            type: string
+            default: ""
+          - name: IQE_ENV
+            type: string
+            default: prod
+          - name: IQE_EXTRA_ARGS
+            type: string
+            default: ""
+          - name: DYNACONF_IQE_VAULT_URL
+            type: string
+            default: https://vault.devshift.net/
+          - name: DYNACONF_IQE_VAULT_MOUNT_POINT
+            type: string
+            default: insights
+          - name: DYNACONF_IQE_VAULT_VERIFY
+            type: string
+            default: "true"
+          - name: DYNACONF_IQE_VAULT_OIDC_AUTH
+            type: string
+            default: "1"
+        volumes:
+          - name: credentials
+            emptyDir: {}
+        steps:
+          - name: get-kubeconfig
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/build-definitions.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/eaas-get-ephemeral-cluster-credentials/0.1/eaas-get-ephemeral-cluster-credentials.yaml
+            params:
+              - name: eaasSpaceSecretRef
+                value: $(params.EAAS_SPACE_SECRET_REF)
+              - name: clusterName
+                value: $(params.CLUSTER_NAME)
+              - name: credentials
+                value: credentials
+          - name: run-iqe
+            image: $(params.IQE_IMAGE)
+            env:
+              - name: GENERATED_KUBECONFIG
+                value: "/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
+            volumeMounts:
+              - name: credentials
+                mountPath: /credentials
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+              IQE_FILTER_EXPRESSION="$(params.IQE_FILTER_EXPRESSION)"
+              IQE_EXTRA_ARGS="$(params.IQE_EXTRA_ARGS)"
+
+              export DYNACONF_IQE_VAULT_LOADER_ENABLED=true
+              export DYNACONF_IQE_VAULT_URL="$(params.DYNACONF_IQE_VAULT_URL)"
+              export DYNACONF_IQE_VAULT_VERIFY="$(params.DYNACONF_IQE_VAULT_VERIFY)"
+              export DYNACONF_IQE_VAULT_MOUNT_POINT="$(params.DYNACONF_IQE_VAULT_MOUNT_POINT)"
+              export DYNACONF_IQE_VAULT_OIDC_AUTH="$(params.DYNACONF_IQE_VAULT_OIDC_AUTH)"
+              export ENV_FOR_DYNACONF="$(params.IQE_ENV)"
+              export KUBECONFIG="${GENERATED_KUBECONFIG}"
+
+              iqe tests plugin "$(params.IQE_PLUGINS)" -m "$(params.IQE_MARKER_EXPRESSION)" \
+                ${IQE_FILTER_EXPRESSION:+-k "${IQE_FILTER_EXPRESSION}"} \
+                ${IQE_EXTRA_ARGS}
 
     - name: verify-image-sources
       runAfter:

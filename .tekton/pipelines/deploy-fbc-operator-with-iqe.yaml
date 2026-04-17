@@ -270,6 +270,7 @@ spec:
                 value: "$(tasks.get-unreleased-bundle.results.unreleasedBundle)"
 
     - name: provision-cluster
+      retries: 1
       runAfter:
         - pick-cluster-params
       when:

@@ -126,8 +126,8 @@ spec:
 
               echo -n "${mirror_set_yaml}" > "$(results.mirrorSetYaml.path)"
               serialized_mirror_set=$(serialize_image_mirrors_yaml "${mirror_set_yaml}")
-              echo -n "${serialized_mirror_set}" > "$(results.serializedMirrorSetYaml.path)"
-              echo -n "${serialized_mirror_set}" > /workspace/shared-data/serializedMirrorSet.yaml
+              echo -e "${serialized_mirror_set}" > "$(results.serializedMirrorSetYaml.path)"
+              echo -e "${serialized_mirror_set}" > /workspace/shared-data/serializedMirrorSet.yaml
       workspaces:
         - name: shared-data
           workspace: shared-data

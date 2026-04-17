@@ -72,6 +72,9 @@ spec:
           value: credentials
     - name: run-iqe
       image: $(params.IQE_IMAGE)
+      env:
+        - name: GENERATED_KUBECONFIG
+          value: "/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
       volumeMounts:
         - name: credentials
           mountPath: /credentials
@@ -94,7 +97,7 @@ spec:
         export DYNACONF_IQE_VAULT_MOUNT_POINT="$(params.DYNACONF_IQE_VAULT_MOUNT_POINT)"
         export DYNACONF_IQE_VAULT_OIDC_AUTH="$(params.DYNACONF_IQE_VAULT_OIDC_AUTH)"
         export ENV_FOR_DYNACONF="$(params.IQE_ENV)"
-        export KUBECONFIG="/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
+        export KUBECONFIG="${GENERATED_KUBECONFIG}"
         echo "Using kubeconfig: ${KUBECONFIG}"
 
         # The task expects iqe CLI to be present in IQE_IMAGE.

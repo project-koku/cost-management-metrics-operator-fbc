@@ -377,6 +377,9 @@ spec:
                 value: credentials
           - name: prepare-kubeconfig
             image: registry.access.redhat.com/ubi9/ubi-minimal
+            env:
+              - name: GENERATED_KUBECONFIG
+                value: "/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
             volumeMounts:
               - name: credentials
                 mountPath: /credentials
@@ -384,7 +387,7 @@ spec:
               #!/usr/bin/env bash
               set -euo pipefail
               mkdir -p /tekton/home/.kube
-              cp "/credentials/$(steps.get-kubeconfig.results.kubeconfig)" /tekton/home/.kube/config
+              cp "${GENERATED_KUBECONFIG}" /tekton/home/.kube/config
               chmod 0600 /tekton/home/.kube/config
           - name: install-operator
             onError: continue

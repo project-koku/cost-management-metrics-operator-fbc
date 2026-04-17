@@ -6,6 +6,8 @@ spec:
   description: >
     Extension pipeline that preserves deploy-fbc-operator baseline behavior and
     inserts IQE execution after operator deployment.
+  workspaces:
+    - name: shared-data
   params:
     - name: SNAPSHOT
       type: string
@@ -94,6 +96,8 @@ spec:
           operator: in
           values: ["push", "Push", "pull_request"]
       taskSpec:
+        workspaces:
+          - name: shared-data
         results:
           - name: mirrorSetYaml
             description: Contents of the mirror set yaml file.
@@ -112,6 +116,7 @@ spec:
             script: |
               #!/usr/bin/env bash
               set -euo pipefail
+              . /utils.sh
               mirror_set_url="${SOURCE_GIT_URL}/raw/${SOURCE_GIT_REVISION}/${PATH_TO_MIRROR_SET}"
               mirror_set_yaml=$(curl -kfLs "$mirror_set_url" 2>/dev/null)
               if [[ -z "${mirror_set_yaml}" ]]; then
@@ -120,8 +125,12 @@ spec:
               fi
 
               echo -n "${mirror_set_yaml}" > "$(results.mirrorSetYaml.path)"
-              # Cluster provisioning step accepts YAML list in string form.
-              echo -n "${mirror_set_yaml}" > "$(results.serializedMirrorSetYaml.path)"
+              serialized_mirror_set=$(serialize_image_mirrors_yaml "${mirror_set_yaml}")
+              echo -n "${serialized_mirror_set}" > "$(results.serializedMirrorSetYaml.path)"
+              echo -n "${serialized_mirror_set}" > /workspace/shared-data/serializedMirrorSet.yaml
+      workspaces:
+        - name: shared-data
+          workspace: shared-data
 
     - name: get-unreleased-bundle
       runAfter:
@@ -277,6 +286,8 @@ spec:
           operator: in
           values: ["push", "Push", "pull_request"]
       taskSpec:
+        workspaces:
+          - name: shared-data
         results:
           - name: clusterName
             value: "$(steps.create-cluster.results.clusterName)"
@@ -311,8 +322,11 @@ spec:
                 value: "$(steps.get-latest-version-tag.results.version)"
               - name: instanceType
                 value: "$(tasks.pick-cluster-params.results.bundleArch)"
-              - name: imageContentSources
-                value: "$(tasks.fetch-config-files.results.serializedMirrorSetYaml)"
+              - name: imageContentSourcesFile
+                value: /workspace/shared-data/serializedMirrorSet.yaml
+      workspaces:
+        - name: shared-data
+          workspace: shared-data
 
     - name: deploy-operator
       runAfter:

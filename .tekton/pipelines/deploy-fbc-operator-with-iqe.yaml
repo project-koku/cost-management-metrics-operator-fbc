@@ -453,9 +453,9 @@ spec:
         resolver: git
         params:
           - name: url
-            value: "$(tasks.parse-metadata.results.source-git-url)"
+            value: https://github.com/project-koku/cost-management-metrics-operator-fbc.git
           - name: revision
-            value: "$(tasks.parse-metadata.results.source-git-revision)"
+            value: main
           - name: pathInRepo
             value: .tekton/tasks/run-iqe-cost-operator.yaml
 

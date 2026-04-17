@@ -14,3 +14,12 @@ spec:
         value: main
       - name: pathInRepo
         value: .tekton/pipelines/deploy-fbc-operator-with-iqe.yaml
+  workspaces:
+    - name: shared-data
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi

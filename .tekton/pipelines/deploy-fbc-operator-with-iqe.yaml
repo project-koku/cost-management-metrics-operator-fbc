@@ -353,6 +353,13 @@ spec:
         - name: channelName
           value: "$(tasks.get-unreleased-bundle.results.channelName)"
       taskSpec:
+        stepTemplate:
+          env:
+            - name: KUBECONFIG
+              value: /credentials/kubeconfig
+          volumeMounts:
+            - name: credentials
+              mountPath: /credentials
         results:
           - name: imagesPulledAfterDeploymentStart
             description: Image pulls tracked after operator deployment.
@@ -395,15 +402,11 @@ spec:
             env:
               - name: GENERATED_KUBECONFIG
                 value: "/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
-            volumeMounts:
-              - name: credentials
-                mountPath: /credentials
             script: |
               #!/usr/bin/env bash
               set -euo pipefail
-              mkdir -p /tekton/home/.kube
-              cp "${GENERATED_KUBECONFIG}" /tekton/home/.kube/config
-              chmod 0600 /tekton/home/.kube/config
+              cp "${GENERATED_KUBECONFIG}" /credentials/kubeconfig
+              chmod 0600 /credentials/kubeconfig
           - name: install-operator
             onError: continue
             ref:

@@ -39,6 +39,9 @@ spec:
     - name: IQE_PLUGINS
       type: string
       default: cost_management
+    - name: IQE_IMAGE
+      type: string
+      default: quay.io/cloudservices/iqe-core:latest
     - name: IQE_MARKER_EXPRESSION
       type: string
       default: cost_operator
@@ -459,6 +462,8 @@ spec:
           value: $(tasks.provision-cluster.results.clusterName)
         - name: IQE_PLUGINS
           value: $(params.IQE_PLUGINS)
+        - name: IQE_IMAGE
+          value: $(params.IQE_IMAGE)
         - name: IQE_MARKER_EXPRESSION
           value: $(params.IQE_MARKER_EXPRESSION)
         - name: IQE_FILTER_EXPRESSION

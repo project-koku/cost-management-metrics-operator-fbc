@@ -119,6 +119,8 @@ spec:
         echo "Starting IQE step in image $(params.IQE_IMAGE)"
         command -v iqe
         iqe --version || true
+        echo "Installed IQE plugins:"
+        iqe plugin list || true
 
         export DYNACONF_IQE_VAULT_LOADER_ENABLED=true
         export DYNACONF_IQE_VAULT_URL="$(params.DYNACONF_IQE_VAULT_URL)"

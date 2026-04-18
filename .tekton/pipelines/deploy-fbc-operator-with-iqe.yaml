@@ -54,6 +54,9 @@ spec:
     - name: IQE_EXTRA_ARGS
       type: string
       default: ""
+    - name: DYNACONF_IQE_VAULT_LOADER_ENABLED
+      type: string
+      default: "true"
   tasks:
     - name: parse-metadata
       taskRef:
@@ -472,6 +475,8 @@ spec:
           value: $(params.IQE_ENV)
         - name: IQE_EXTRA_ARGS
           value: $(params.IQE_EXTRA_ARGS)
+        - name: DYNACONF_IQE_VAULT_LOADER_ENABLED
+          value: $(params.DYNACONF_IQE_VAULT_LOADER_ENABLED)
       taskSpec:
         params:
           - name: EAAS_SPACE_SECRET_REF
@@ -496,6 +501,9 @@ spec:
           - name: IQE_EXTRA_ARGS
             type: string
             default: ""
+          - name: DYNACONF_IQE_VAULT_LOADER_ENABLED
+            type: string
+            default: "true"
           - name: DYNACONF_IQE_VAULT_URL
             type: string
             default: https://vault.devshift.net/
@@ -570,11 +578,12 @@ spec:
 
               echo "Starting IQE step in image $(params.IQE_IMAGE)"
               command -v iqe
-              iqe --version || true
+              iqe --help >/tmp/iqe-help.txt 2>&1 || true
+              sed -n '1,6p' /tmp/iqe-help.txt || true
               echo "Installed IQE plugins:"
               iqe plugin list || true
 
-              export DYNACONF_IQE_VAULT_LOADER_ENABLED=true
+              export DYNACONF_IQE_VAULT_LOADER_ENABLED="$(params.DYNACONF_IQE_VAULT_LOADER_ENABLED)"
               export DYNACONF_IQE_VAULT_URL="$(params.DYNACONF_IQE_VAULT_URL)"
               export DYNACONF_IQE_VAULT_VERIFY="$(params.DYNACONF_IQE_VAULT_VERIFY)"
               export DYNACONF_IQE_VAULT_MOUNT_POINT="$(params.DYNACONF_IQE_VAULT_MOUNT_POINT)"
@@ -582,6 +591,30 @@ spec:
               export ENV_FOR_DYNACONF="$(params.IQE_ENV)"
               export KUBECONFIG="${GENERATED_KUBECONFIG}"
               echo "Using kubeconfig ${KUBECONFIG}"
+              echo "Vault loader enabled: ${DYNACONF_IQE_VAULT_LOADER_ENABLED}"
+
+              if [[ "${DYNACONF_IQE_VAULT_LOADER_ENABLED}" == "true" ]]; then
+                echo "Checking connectivity to ${DYNACONF_IQE_VAULT_URL} before IQE run..."
+                python - "${DYNACONF_IQE_VAULT_URL}" <<'PY'
+import socket
+import sys
+from urllib.parse import urlparse
+
+vault_url = sys.argv[1]
+url = urlparse(vault_url)
+host = url.hostname
+port = url.port or 443
+if not host:
+    print(f"ERROR: Unable to parse vault host from URL '{vault_url}'")
+    sys.exit(13)
+try:
+    socket.create_connection((host, port), timeout=10).close()
+    print(f"Vault connectivity check passed: {host}:{port}")
+except Exception as exc:
+    print(f"ERROR: Vault connectivity check failed for {host}:{port}: {exc}")
+    sys.exit(12)
+PY
+              fi
 
               iqe tests plugin "$(params.IQE_PLUGINS)" -m "$(params.IQE_MARKER_EXPRESSION)" \
                 ${IQE_FILTER_EXPRESSION:+-k "${IQE_FILTER_EXPRESSION}"} \

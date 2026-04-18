@@ -70,6 +70,30 @@ spec:
           value: $(params.CLUSTER_NAME)
         - name: credentials
           value: credentials
+    - name: iqe-preflight
+      image: registry.access.redhat.com/ubi9/ubi-minimal
+      env:
+        - name: GENERATED_KUBECONFIG
+          value: "/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
+      volumeMounts:
+        - name: credentials
+          mountPath: /credentials
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        echo "IQE preflight starting"
+        echo "IQE image: $(params.IQE_IMAGE)"
+        echo "IQE plugins: $(params.IQE_PLUGINS)"
+        echo "IQE marker: $(params.IQE_MARKER_EXPRESSION)"
+        echo "IQE env: $(params.IQE_ENV)"
+        echo "Cluster name: $(params.CLUSTER_NAME)"
+        echo "Kubeconfig path from credential step: ${GENERATED_KUBECONFIG}"
+        ls -la /credentials || true
+        if [[ ! -f "${GENERATED_KUBECONFIG}" ]]; then
+          echo "ERROR: kubeconfig file not found at ${GENERATED_KUBECONFIG}"
+          exit 1
+        fi
+        echo "IQE preflight completed"
     - name: run-iqe
       image: $(params.IQE_IMAGE)
       env:
@@ -81,6 +105,7 @@ spec:
       script: |
         #!/usr/bin/env bash
         set -euo pipefail
+        trap 'echo "IQE step failed at line $LINENO with exit code $?."' ERR
 
         echo "Starting IQE operator tests..."
         echo "Plugins: $(params.IQE_PLUGINS)"
@@ -90,6 +115,10 @@ spec:
         if [[ -n "${IQE_FILTER_EXPRESSION}" ]]; then
           echo "Filter: ${IQE_FILTER_EXPRESSION}"
         fi
+
+        echo "Starting IQE step in image $(params.IQE_IMAGE)"
+        command -v iqe
+        iqe --version || true
 
         export DYNACONF_IQE_VAULT_LOADER_ENABLED=true
         export DYNACONF_IQE_VAULT_URL="$(params.DYNACONF_IQE_VAULT_URL)"

@@ -41,7 +41,7 @@ spec:
       default: cost_management
     - name: IQE_IMAGE
       type: string
-      default: quay.io/cloudservices/iqe-core:latest
+      default: quay.io/cloudservices/iqe-tests:cost-management
     - name: IQE_MARKER_EXPRESSION
       type: string
       default: cost_operator
@@ -450,7 +450,7 @@ spec:
 
     - name: run-iqe-cost-operator
       runAfter:
-        - deploy-operator
+        - verify-iqe-image-access
       when:
         - input: $(tasks.parse-metadata.results.test-event-type)
           operator: in
@@ -480,7 +480,7 @@ spec:
             type: string
           - name: IQE_IMAGE
             type: string
-            default: quay.io/cloudservices/iqe-core:latest
+            default: quay.io/cloudservices/iqe-tests:cost-management
           - name: IQE_PLUGINS
             type: string
             default: cost_management
@@ -586,6 +586,30 @@ spec:
               iqe tests plugin "$(params.IQE_PLUGINS)" -m "$(params.IQE_MARKER_EXPRESSION)" \
                 ${IQE_FILTER_EXPRESSION:+-k "${IQE_FILTER_EXPRESSION}"} \
                 ${IQE_EXTRA_ARGS}
+
+    - name: verify-iqe-image-access
+      runAfter:
+        - deploy-operator
+      when:
+        - input: $(tasks.parse-metadata.results.test-event-type)
+          operator: in
+          values: ["push", "Push", "pull_request"]
+      params:
+        - name: IQE_IMAGE
+          value: $(params.IQE_IMAGE)
+      taskSpec:
+        params:
+          - name: IQE_IMAGE
+            type: string
+        steps:
+          - name: inspect-iqe-image
+            image: quay.io/konflux-ci/konflux-test:v1.4.48
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+              echo "Checking IQE image access: $(params.IQE_IMAGE)"
+              skopeo inspect --no-tags "docker://$(params.IQE_IMAGE)" >/tmp/inspect.json
+              echo "IQE image is pullable"
 
     - name: verify-image-sources
       runAfter:

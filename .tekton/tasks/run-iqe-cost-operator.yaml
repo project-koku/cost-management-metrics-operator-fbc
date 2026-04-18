@@ -16,7 +16,7 @@ spec:
     - name: IQE_IMAGE
       type: string
       description: Container image that provides iqe CLI/runtime.
-      default: quay.io/cloudservices/iqe-core:latest
+      default: quay.io/cloudservices/iqe-tests:cost-management
     - name: IQE_PLUGINS
       type: string
       description: IQE plugin list.

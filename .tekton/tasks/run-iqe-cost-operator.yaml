@@ -138,25 +138,22 @@ spec:
 
         if [[ "${DYNACONF_IQE_VAULT_LOADER_ENABLED}" == "true" ]]; then
           echo "Checking connectivity to ${DYNACONF_IQE_VAULT_URL} before IQE run..."
-          python - "${DYNACONF_IQE_VAULT_URL}" <<'PY'
-import socket
-import sys
-from urllib.parse import urlparse
-
-vault_url = sys.argv[1]
-url = urlparse(vault_url)
-host = url.hostname
-port = url.port or 443
-if not host:
-    print(f"ERROR: Unable to parse vault host from URL '{vault_url}'")
-    sys.exit(13)
-try:
-    socket.create_connection((host, port), timeout=10).close()
-    print(f"Vault connectivity check passed: {host}:{port}")
-except Exception as exc:
-    print(f"ERROR: Vault connectivity check failed for {host}:{port}: {exc}")
-    sys.exit(12)
-PY
+          vault_no_scheme="${DYNACONF_IQE_VAULT_URL#*://}"
+          vault_hostport="${vault_no_scheme%%/*}"
+          vault_host="${vault_hostport%%:*}"
+          vault_port="443"
+          if [[ "${vault_hostport}" == *:* ]]; then
+            vault_port="${vault_hostport##*:}"
+          fi
+          if [[ -z "${vault_host}" ]]; then
+            echo "ERROR: Unable to parse vault host from URL '${DYNACONF_IQE_VAULT_URL}'"
+            exit 13
+          fi
+          python -c 'import socket,sys; h=sys.argv[1]; p=int(sys.argv[2]); socket.create_connection((h,p),10).close(); print(f"Vault connectivity check passed: {h}:{p}")' \
+            "${vault_host}" "${vault_port}" || {
+              echo "ERROR: Vault connectivity check failed for ${vault_host}:${vault_port}"
+              exit 12
+            }
         fi
 
         # The task expects iqe CLI to be present in IQE_IMAGE.

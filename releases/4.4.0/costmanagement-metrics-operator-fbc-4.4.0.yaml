@@ -1,0 +1,140 @@
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  labels:
+    release.appstudio.openshift.io/author: 'rh-ee-dnakabaa'
+    release.appstudio.openshift.io/version: '4.4.0'
+    release.appstudio.openshift.io/sha: 'cf5f6feb32bc3b48e6c0fe287aa4a2bd3944dc31'
+
+  name: costmanagement-metrics-operator-fbc-v4-12-20260414-181017-000-1
+  namespace: cost-mgmt-dev-tenant
+spec:
+  releasePlan: costmanagement-metrics-operator-fbc-v4-12
+  snapshot: costmanagement-metrics-operator-fbc-v4-12-20260414-181017-000
+
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  labels:
+    release.appstudio.openshift.io/author: 'rh-ee-dnakabaa'
+    release.appstudio.openshift.io/version: '4.4.0'
+    release.appstudio.openshift.io/sha: 'cf5f6feb32bc3b48e6c0fe287aa4a2bd3944dc31'
+  name: costmanagement-metrics-operator-fbc-v4-13-20260414-181026-000-1
+  namespace: cost-mgmt-dev-tenant
+spec:
+  releasePlan: costmanagement-metrics-operator-fbc-v4-13
+  snapshot: costmanagement-metrics-operator-fbc-v4-13-20260414-181026-000
+
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  labels:
+    release.appstudio.openshift.io/author: 'rh-ee-dnakabaa'
+    release.appstudio.openshift.io/version: '4.4.0'
+    release.appstudio.openshift.io/sha: 'cf5f6feb32bc3b48e6c0fe287aa4a2bd3944dc31'
+  name: costmanagement-metrics-operator-fbc-v4-14-20260414-181020-000-1
+  namespace: cost-mgmt-dev-tenant
+spec:
+  releasePlan: costmanagement-metrics-operator-fbc-v4-14
+  snapshot: costmanagement-metrics-operator-fbc-v4-14-20260414-181020-000
+
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  labels:
+    release.appstudio.openshift.io/author: 'rh-ee-dnakabaa'
+    release.appstudio.openshift.io/version: '4.4.0'
+    release.appstudio.openshift.io/sha: 'cf5f6feb32bc3b48e6c0fe287aa4a2bd3944dc31'
+  name: costmanagement-metrics-operator-fbc-v4-15-20260414-181017-000-1
+  namespace: cost-mgmt-dev-tenant
+spec:
+  releasePlan: costmanagement-metrics-operator-fbc-v4-15
+  snapshot: costmanagement-metrics-operator-fbc-v4-15-20260414-181017-000
+
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  labels:
+    release.appstudio.openshift.io/author: 'rh-ee-dnakabaa'
+    release.appstudio.openshift.io/version: '4.4.0'
+    release.appstudio.openshift.io/sha: 'cf5f6feb32bc3b48e6c0fe287aa4a2bd3944dc31'
+  name: costmanagement-metrics-operator-fbc-v4-16-20260414-181028-000-1
+  namespace: cost-mgmt-dev-tenant
+spec:
+  releasePlan: costmanagement-metrics-operator-fbc-v4-16
+  snapshot: costmanagement-metrics-operator-fbc-v4-16-20260414-181028-000
+
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  labels:
+    release.appstudio.openshift.io/author: 'rh-ee-dnakabaa'
+    release.appstudio.openshift.io/version: '4.4.0'
+    release.appstudio.openshift.io/sha: 'cf5f6feb32bc3b48e6c0fe287aa4a2bd3944dc31'
+  name: costmanagement-metrics-operator-fbc-v4-17-20260414-181024-000-1
+  namespace: cost-mgmt-dev-tenant
+spec:
+  releasePlan: costmanagement-metrics-operator-fbc-v4-17
+  snapshot: costmanagement-metrics-operator-fbc-v4-17-20260414-181024-000
+
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  labels:
+    release.appstudio.openshift.io/author: 'rh-ee-dnakabaa'
+    release.appstudio.openshift.io/version: '4.4.0'
+    release.appstudio.openshift.io/sha: 'cf5f6feb32bc3b48e6c0fe287aa4a2bd3944dc31'
+  name: costmanagement-metrics-operator-fbc-v4-18-20260414-181016-000-1
+  namespace: cost-mgmt-dev-tenant
+spec:
+  releasePlan: costmanagement-metrics-operator-fbc-v4-18
+  snapshot: costmanagement-metrics-operator-fbc-v4-18-20260414-181016-000
+
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  labels:
+    release.appstudio.openshift.io/author: 'rh-ee-dnakabaa'
+    release.appstudio.openshift.io/version: '4.4.0'
+    release.appstudio.openshift.io/sha: 'cf5f6feb32bc3b48e6c0fe287aa4a2bd3944dc31'
+  name: costmanagement-metrics-operator-fbc-v4-19-20260414-181028-000-1
+  namespace: cost-mgmt-dev-tenant
+spec:
+  releasePlan: costmanagement-metrics-operator-fbc-v4-19
+  snapshot: costmanagement-metrics-operator-fbc-v4-19-20260414-181028-000
+
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  labels:
+    release.appstudio.openshift.io/author: 'rh-ee-dnakabaa'
+    release.appstudio.openshift.io/version: '4.4.0'
+    release.appstudio.openshift.io/sha: 'cf5f6feb32bc3b48e6c0fe287aa4a2bd3944dc31'
+  name: costmanagement-metrics-operator-fbc-v4-20-20260414-181018-000-1
+  namespace: cost-mgmt-dev-tenant
+spec:
+  releasePlan: costmanagement-metrics-operator-fbc-v4-20
+  snapshot: costmanagement-metrics-operator-fbc-v4-20-20260414-181018-000
+
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  labels:
+    release.appstudio.openshift.io/author: 'rh-ee-dnakabaa'
+    release.appstudio.openshift.io/version: '4.4.0'
+    release.appstudio.openshift.io/sha: 'cf5f6feb32bc3b48e6c0fe287aa4a2bd3944dc31'
+  name: costmanagement-metrics-operator-fbc-v4-21-20260414-181023-000-1
+  namespace: cost-mgmt-dev-tenant
+spec:
+  releasePlan: costmanagement-metrics-operator-fbc-v4-21
+  snapshot: costmanagement-metrics-operator-fbc-v4-21-20260414-181023-000

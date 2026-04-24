@@ -18,6 +18,10 @@ spec:
     - name: CHANNEL_NAME
       type: string
       default: stable
+    - name: RELEASED_BUNDLE_IMAGE_OVERRIDE
+      type: string
+      description: Temporary override to force testing with a released bundle image.
+      default: ""
     - name: CREDENTIALS_SECRET_NAME
       type: string
       description: Registry credentials used for artifact publishing.
@@ -178,6 +182,8 @@ spec:
             env:
               - name: BUNDLE_IMAGE
                 value: "$(steps.get-unreleased-bundle.results.unreleasedBundle)"
+              - name: BUNDLE_IMAGE_OVERRIDE
+                value: "$(params.RELEASED_BUNDLE_IMAGE_OVERRIDE)"
               - name: MIRROR_SET_YAML
                 value: "$(tasks.fetch-config-files.results.mirrorSetYaml)"
             script: |
@@ -185,6 +191,11 @@ spec:
               set -euo pipefail
               . /utils.sh
               replaced_image=""
+
+              if [[ -n "${BUNDLE_IMAGE_OVERRIDE}" ]]; then
+                echo "Using released bundle override: ${BUNDLE_IMAGE_OVERRIDE}"
+                BUNDLE_IMAGE="${BUNDLE_IMAGE_OVERRIDE}"
+              fi
 
               if [[ -z "${BUNDLE_IMAGE}" || "${BUNDLE_IMAGE}" == "null" ]]; then
                 echo -n "$replaced_image" > "$(results.unreleasedBundle.path)"

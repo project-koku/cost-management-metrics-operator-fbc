@@ -517,7 +517,7 @@ spec:
             default: "true"
           - name: DYNACONF_IQE_VAULT_URL
             type: string
-            default: https://vault.devshift.net/
+            default: https://vault.ci.ext.devshift.net
           - name: DYNACONF_IQE_VAULT_MOUNT_POINT
             type: string
             default: insights

@@ -49,9 +49,12 @@ spec:
     - name: DYNACONF_IQE_VAULT_VERIFY
       type: string
       default: "true"
-    - name: DYNACONF_IQE_VAULT_OIDC_AUTH
+    - name: DYNACONF_IQE_VAULT_TOKEN
       type: string
-      default: "1"
+      default: ""
+    - name: DYNACONF_IQE_VAULT_ROLE_ID
+      type: string
+      default: ""
   volumes:
     - name: credentials
       emptyDir: {}
@@ -102,6 +105,11 @@ spec:
       env:
         - name: GENERATED_KUBECONFIG
           value: "/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
+        - name: DYNACONF_IQE_VAULT_SECRET_ID
+          valueFrom:
+            secretKeyRef:
+              name: cost-mgmt-vault-ci-secret
+              key: secret-id
       volumeMounts:
         - name: credentials
           mountPath: /credentials
@@ -130,13 +138,18 @@ spec:
         export DYNACONF_IQE_VAULT_URL="$(params.DYNACONF_IQE_VAULT_URL)"
         export DYNACONF_IQE_VAULT_VERIFY="$(params.DYNACONF_IQE_VAULT_VERIFY)"
         export DYNACONF_IQE_VAULT_MOUNT_POINT="$(params.DYNACONF_IQE_VAULT_MOUNT_POINT)"
-        export DYNACONF_IQE_VAULT_OIDC_AUTH="$(params.DYNACONF_IQE_VAULT_OIDC_AUTH)"
+        export DYNACONF_IQE_VAULT_TOKEN="$(params.DYNACONF_IQE_VAULT_TOKEN)"
+        export DYNACONF_IQE_VAULT_ROLE_ID="$(params.DYNACONF_IQE_VAULT_ROLE_ID)"
         export ENV_FOR_DYNACONF="$(params.IQE_ENV)"
         export KUBECONFIG="${GENERATED_KUBECONFIG}"
         echo "Using kubeconfig: ${KUBECONFIG}"
         echo "Vault loader enabled: ${DYNACONF_IQE_VAULT_LOADER_ENABLED}"
 
         if [[ "${DYNACONF_IQE_VAULT_LOADER_ENABLED}" == "true" ]]; then
+          if [[ -z "${DYNACONF_IQE_VAULT_TOKEN}" ]] && [[ -z "${DYNACONF_IQE_VAULT_ROLE_ID}" || -z "${DYNACONF_IQE_VAULT_SECRET_ID}" ]]; then
+            echo "ERROR: Vault auth requires DYNACONF_IQE_VAULT_TOKEN or both DYNACONF_IQE_VAULT_ROLE_ID and DYNACONF_IQE_VAULT_SECRET_ID."
+            exit 14
+          fi
           echo "Checking connectivity to ${DYNACONF_IQE_VAULT_URL} before IQE run..."
           vault_no_scheme="${DYNACONF_IQE_VAULT_URL#*://}"
           vault_hostport="${vault_no_scheme%%/*}"

@@ -17,6 +17,8 @@ spec:
   params:
     - name: DYNACONF_IQE_VAULT_LOADER_ENABLED
       value: "true"
+    - name: IQE_EXTRA_ARGS
+      value: "--iqe-force-default-user=cost_management:iqe_prod"
     - name: DYNACONF_IQE_VAULT_TOKEN
       value: ""
     - name: DYNACONF_IQE_VAULT_ROLE_ID

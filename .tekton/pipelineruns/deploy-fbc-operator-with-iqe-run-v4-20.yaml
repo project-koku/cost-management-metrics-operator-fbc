@@ -21,6 +21,8 @@ spec:
       value: ""
     - name: DYNACONF_IQE_VAULT_ROLE_ID
       value: "6f1add7c-cf53-5190-16fa-51ef09046b14"
+  timeouts:
+    pipeline: "2h30m0s"
   taskRunTemplate:
     serviceAccountName: build-pipeline-costmanagement-metrics-operator-fbc-component-v4-20
   workspaces:

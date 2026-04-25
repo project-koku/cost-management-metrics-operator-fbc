@@ -70,9 +70,6 @@ spec:
     - name: DYNACONF_IQE_VAULT_VERIFY
       type: string
       default: "true"
-    - name: DYNACONF_IQE_VAULT_TOKEN
-      type: string
-      default: ""
     - name: DYNACONF_IQE_VAULT_ROLE_ID
       type: string
       default: ""
@@ -361,125 +358,9 @@ spec:
         - name: shared-data
           workspace: shared-data
 
-    - name: deploy-operator
-      runAfter:
-        - provision-cluster
-      when:
-        - input: "$(tasks.get-unreleased-bundle.results.unreleasedBundle)"
-          operator: notin
-          values: [""]
-        - input: $(tasks.parse-metadata.results.test-event-type)
-          operator: in
-          values: ["push", "Push", "pull_request"]
-      params:
-        - name: eaasSpaceSecretRef
-          value: $(tasks.provision-eaas-space.results.secretRef)
-        - name: clusterName
-          value: "$(tasks.provision-cluster.results.clusterName)"
-        - name: fbcFragment
-          value: "$(tasks.parse-metadata.results.component-container-image)"
-        - name: bundleImage
-          value: "$(tasks.get-unreleased-bundle.results.unreleasedBundle)"
-        - name: packageName
-          value: "$(tasks.get-unreleased-bundle.results.packageName)"
-        - name: channelName
-          value: "$(tasks.get-unreleased-bundle.results.channelName)"
-      taskSpec:
-        stepTemplate:
-          env:
-            - name: KUBECONFIG
-              value: /credentials/kubeconfig
-          volumeMounts:
-            - name: credentials
-              mountPath: /credentials
-        results:
-          - name: imagesPulledAfterDeploymentStart
-            description: Image pulls tracked after operator deployment.
-        params:
-          - name: eaasSpaceSecretRef
-            type: string
-          - name: clusterName
-            type: string
-          - name: fbcFragment
-            type: string
-          - name: bundleImage
-            type: string
-          - name: packageName
-            type: string
-          - name: channelName
-            type: string
-        volumes:
-          - name: credentials
-            emptyDir: {}
-        steps:
-          - name: get-kubeconfig
-            ref:
-              resolver: git
-              params:
-                - name: url
-                  value: https://github.com/konflux-ci/build-definitions.git
-                - name: revision
-                  value: main
-                - name: pathInRepo
-                  value: stepactions/eaas-get-ephemeral-cluster-credentials/0.1/eaas-get-ephemeral-cluster-credentials.yaml
-            params:
-              - name: eaasSpaceSecretRef
-                value: $(params.eaasSpaceSecretRef)
-              - name: clusterName
-                value: $(params.clusterName)
-              - name: credentials
-                value: credentials
-          - name: prepare-kubeconfig
-            image: registry.access.redhat.com/ubi9/ubi-minimal
-            env:
-              - name: GENERATED_KUBECONFIG
-                value: "/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
-            script: |
-              #!/usr/bin/env bash
-              set -euo pipefail
-              cp "${GENERATED_KUBECONFIG}" /credentials/kubeconfig
-              chmod 0600 /credentials/kubeconfig
-          - name: install-operator
-            onError: continue
-            ref:
-              resolver: git
-              params:
-                - name: url
-                  value: https://github.com/konflux-ci/tekton-integration-catalog.git
-                - name: revision
-                  value: main
-                - name: pathInRepo
-                  value: stepactions/bundles/install-operator/0.1/install-operator.yaml
-            params:
-              - name: fbcFragment
-                value: "$(params.fbcFragment)"
-              - name: bundleImage
-                value: "$(params.bundleImage)"
-              - name: packageName
-                value: "$(params.packageName)"
-              - name: channelName
-                value: "$(params.channelName)"
-          - name: write-empty-image-pull-events
-            image: registry.access.redhat.com/ubi9/ubi-minimal
-            script: |
-              #!/usr/bin/env bash
-              set -euo pipefail
-              # TODO: Replace with collected image pulls from deployment step.
-              echo -n "" > "$(results.imagesPulledAfterDeploymentStart.path)"
-          - name: fail-if-any-step-failed
-            ref:
-              resolver: git
-              params:
-                - name: url
-                  value: https://github.com/konflux-ci/tekton-integration-catalog.git
-                - name: revision
-                  value: main
-                - name: pathInRepo
-                  value: stepactions/fail-if-any-step-failed/0.1/fail-if-any-step-failed.yaml
-
     - name: run-iqe-cost-operator
       runAfter:
-        - verify-iqe-image-access
+        - provision-cluster
       when:
         - input: $(tasks.parse-metadata.results.test-event-type)
           operator: in
@@ -509,8 +390,6 @@ spec:
           value: $(params.DYNACONF_IQE_VAULT_MOUNT_POINT)
         - name: DYNACONF_IQE_VAULT_VERIFY
           value: $(params.DYNACONF_IQE_VAULT_VERIFY)
-        - name: DYNACONF_IQE_VAULT_TOKEN
-          value: $(params.DYNACONF_IQE_VAULT_TOKEN)
         - name: DYNACONF_IQE_VAULT_ROLE_ID
           value: $(params.DYNACONF_IQE_VAULT_ROLE_ID)
       taskSpec:
@@ -549,9 +428,6 @@ spec:
           - name: DYNACONF_IQE_VAULT_VERIFY
             type: string
             default: "true"
-          - name: DYNACONF_IQE_VAULT_TOKEN
-            type: string
-            default: ""
           - name: DYNACONF_IQE_VAULT_ROLE_ID
             type: string
             default: ""
@@ -600,6 +476,14 @@ spec:
                 exit 1
               fi
               echo "IQE preflight completed"
+          - name: verify-iqe-image-access
+            image: quay.io/konflux-ci/konflux-test:v1.4.48
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+              echo "Checking IQE image access: $(params.IQE_IMAGE)"
+              skopeo inspect --no-tags "docker://$(params.IQE_IMAGE)" >/tmp/inspect.json
+              echo "IQE image is pullable"
           - name: run-iqe
             image: $(params.IQE_IMAGE)
             env:
@@ -631,7 +515,6 @@ spec:
               export DYNACONF_IQE_VAULT_URL="$(params.DYNACONF_IQE_VAULT_URL)"
               export DYNACONF_IQE_VAULT_VERIFY="$(params.DYNACONF_IQE_VAULT_VERIFY)"
               export DYNACONF_IQE_VAULT_MOUNT_POINT="$(params.DYNACONF_IQE_VAULT_MOUNT_POINT)"
-              export DYNACONF_IQE_VAULT_TOKEN="$(params.DYNACONF_IQE_VAULT_TOKEN)"
               export DYNACONF_IQE_VAULT_ROLE_ID="$(params.DYNACONF_IQE_VAULT_ROLE_ID)"
               export ENV_FOR_DYNACONF="$(params.IQE_ENV)"
               export KUBECONFIG="${GENERATED_KUBECONFIG}"
@@ -639,8 +522,8 @@ spec:
               echo "Vault loader enabled: ${DYNACONF_IQE_VAULT_LOADER_ENABLED}"
 
               if [[ "${DYNACONF_IQE_VAULT_LOADER_ENABLED}" == "true" ]]; then
-                if [[ -z "${DYNACONF_IQE_VAULT_TOKEN}" ]] && [[ -z "${DYNACONF_IQE_VAULT_ROLE_ID}" || -z "${DYNACONF_IQE_VAULT_SECRET_ID}" ]]; then
-                  echo "ERROR: Vault auth requires DYNACONF_IQE_VAULT_TOKEN or both DYNACONF_IQE_VAULT_ROLE_ID and DYNACONF_IQE_VAULT_SECRET_ID."
+                if [[ -z "${DYNACONF_IQE_VAULT_ROLE_ID}" || -z "${DYNACONF_IQE_VAULT_SECRET_ID}" ]]; then
+                  echo "ERROR: Vault auth requires both DYNACONF_IQE_VAULT_ROLE_ID and DYNACONF_IQE_VAULT_SECRET_ID."
                   exit 14
                 fi
                 echo "Checking connectivity to ${DYNACONF_IQE_VAULT_URL} before IQE run..."
@@ -665,54 +548,3 @@ spec:
               iqe tests plugin "$(params.IQE_PLUGINS)" -m "$(params.IQE_MARKER_EXPRESSION)" \
                 ${IQE_FILTER_EXPRESSION:+-k "${IQE_FILTER_EXPRESSION}"} \
                 ${IQE_EXTRA_ARGS}
-
-    - name: verify-iqe-image-access
-      runAfter:
-        - deploy-operator
-      when:
-        - input: $(tasks.parse-metadata.results.test-event-type)
-          operator: in
-          values: ["push", "Push", "pull_request"]
-      params:
-        - name: IQE_IMAGE
-          value: $(params.IQE_IMAGE)
-      taskSpec:
-        params:
-          - name: IQE_IMAGE
-            type: string
-        steps:
-          - name: inspect-iqe-image
-            image: quay.io/konflux-ci/konflux-test:v1.4.48
-            script: |
-              #!/usr/bin/env bash
-              set -euo pipefail
-              echo "Checking IQE image access: $(params.IQE_IMAGE)"
-              skopeo inspect --no-tags "docker://$(params.IQE_IMAGE)" >/tmp/inspect.json
-              echo "IQE image is pullable"
-
-    - name: verify-image-sources
-      runAfter:
-        - run-iqe-cost-operator
-      when:
-        - input: "$(tasks.deploy-operator.results.imagesPulledAfterDeploymentStart)"
-          operator: notin
-          values: [""]
-        - input: $(tasks.parse-metadata.results.test-event-type)
-          operator: in
-          values: ["push", "Push", "pull_request"]
-      taskRef:
-        resolver: git
-        params:
-          - name: url
-            value: https://github.com/konflux-ci/tekton-integration-catalog.git
-          - name: revision
-            value: main
-          - name: pathInRepo
-            value: tasks/bundles/verify-image-sources/0.1/verify-image-sources.yaml
-      params:
-        - name: imagesPulledAfterDeploymentStart
-          value: "$(tasks.deploy-operator.results.imagesPulledAfterDeploymentStart)"
-        - name: bundleImage
-          value: "$(tasks.get-unreleased-bundle.results.unreleasedBundle)"
-        - name: scorecardConfigImages
-          value: ""

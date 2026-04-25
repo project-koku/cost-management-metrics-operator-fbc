@@ -17,8 +17,6 @@ spec:
   params:
     - name: DYNACONF_IQE_VAULT_LOADER_ENABLED
       value: "true"
-    - name: IQE_IMAGE
-      value: "quay.io/cloudservices/iqe-tests:cost-management"
     - name: IQE_EXTRA_ARGS
       value: "--iqe-force-default-user=cost_management:iqe_prod"
     - name: DYNACONF_IQE_VAULT_TOKEN

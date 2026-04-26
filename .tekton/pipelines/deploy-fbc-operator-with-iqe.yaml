@@ -153,33 +153,18 @@ spec:
             description: Unreleased bundle image (or mirrored variant).
           - name: packageName
             description: Resolved package name.
-            value: "$(steps.get-unreleased-bundle.results.packageName)"
           - name: channelName
             description: Resolved channel name.
-            value: "$(steps.get-unreleased-bundle.results.channelName)"
         steps:
-          - name: get-unreleased-bundle
-            ref:
-              resolver: git
-              params:
-                - name: url
-                  value: https://github.com/konflux-ci/tekton-integration-catalog.git
-                - name: revision
-                  value: main
-                - name: pathInRepo
-                  value: stepactions/bundles/get-unreleased-bundle/0.1/get-unreleased-bundle.yaml
-            params:
-              - name: fbcFragment
-                value: "$(tasks.parse-metadata.results.component-container-image)"
-              - name: packageName
-                value: $(params.PACKAGE_NAME)
-              - name: channelName
-                value: $(params.CHANNEL_NAME)
-          - name: process-image-mirror-set
+          - name: resolve-bundle-image
             image: quay.io/konflux-ci/konflux-test:v1.4.48
             env:
-              - name: BUNDLE_IMAGE
-                value: "$(steps.get-unreleased-bundle.results.unreleasedBundle)"
+              - name: FBC_FRAGMENT
+                value: "$(tasks.parse-metadata.results.component-container-image)"
+              - name: PACKAGE_NAME
+                value: $(params.PACKAGE_NAME)
+              - name: CHANNEL_NAME
+                value: $(params.CHANNEL_NAME)
               - name: BUNDLE_IMAGE_OVERRIDE
                 value: "$(params.RELEASED_BUNDLE_IMAGE_OVERRIDE)"
               - name: MIRROR_SET_YAML
@@ -188,36 +173,103 @@ spec:
               #!/usr/bin/env bash
               set -euo pipefail
               . /utils.sh
+
+              write_results() {
+                local bundle_image="${1:-}"
+                echo -n "${bundle_image}" > "$(results.unreleasedBundle.path)"
+                echo -n "${resolved_package}" > "$(results.packageName.path)"
+                echo -n "${resolved_channel}" > "$(results.channelName.path)"
+              }
+
+              bundle_image=""
+              resolved_package="${PACKAGE_NAME}"
+              resolved_channel="${CHANNEL_NAME}"
               replaced_image=""
 
               if [[ -n "${BUNDLE_IMAGE_OVERRIDE}" ]]; then
+                # When testing a released bundle, skip the unreleased-bundle lookup entirely.
+                echo "Skipping unreleased bundle lookup because RELEASED_BUNDLE_IMAGE_OVERRIDE is set."
                 echo "Using released bundle override: ${BUNDLE_IMAGE_OVERRIDE}"
-                BUNDLE_IMAGE="${BUNDLE_IMAGE_OVERRIDE}"
+                bundle_image="${BUNDLE_IMAGE_OVERRIDE}"
+              else
+                if [[ -z "${FBC_FRAGMENT}" ]]; then
+                  echo "Error: FBC_FRAGMENT parameter is required." >&2
+                  exit 1
+                fi
+
+                echo "Retrieving unreleased bundles..."
+                if ! unreleased_bundles=$(get_unreleased_bundles -i "$FBC_FRAGMENT"); then
+                  echo "Could not get unreleased bundle images from the fragment. Make sure you have ImagePullCredentials for registry.redhat.io" >&2
+                  exit 1
+                fi
+
+                if [[ -z "${unreleased_bundles}" ]]; then
+                  echo "No unreleased bundles found. Exiting as a no-op."
+                  write_results ""
+                  exit 0
+                fi
+                echo "Unreleased bundles found: ${unreleased_bundles}"
+
+                if ! render_out_fbc=$(render_opm -t "$FBC_FRAGMENT"); then
+                  echo "Failed to render the FBC fragment" >&2
+                  exit 1
+                fi
+
+                if [[ -z "${resolved_package}" ]]; then
+                  echo "Checking package association of unreleased bundles..."
+                  package_image_map=$(group_bundle_images_by_package "$render_out_fbc" "$unreleased_bundles")
+                  echo "Package-image map: $package_image_map"
+                  package_count=$(echo "$package_image_map" | jq 'keys | length')
+
+                  if [[ "$package_count" -gt 1 ]]; then
+                    echo "Error: Multiple packages detected. User must specify PACKAGE_NAME." >&2
+                    exit 1
+                  fi
+
+                  resolved_package=$(echo "$package_image_map" | jq -r 'keys[0]')
+                fi
+                echo "Using package: ${resolved_package}"
+
+                if [[ -z "${resolved_channel}" ]]; then
+                  resolved_channel=$(get_channel_from_catalog "$render_out_fbc" "$resolved_package")
+                  if [[ -z "${resolved_channel}" ]]; then
+                    echo "Failed to determine a default channel for package '$resolved_package'" >&2
+                    exit 1
+                  fi
+                fi
+                echo "Using channel: ${resolved_channel}"
+
+                if ! bundle_image=$(get_highest_version_from_bundles_list "$render_out_fbc" "$resolved_package" "$resolved_channel" "$unreleased_bundles"); then
+                  echo "No unreleased bundle(s) found matching the specified package and/or channel. Exiting as a no-op."
+                  write_results ""
+                  exit 0
+                fi
+                echo "Highest bundle: ${bundle_image}"
               fi
 
-              if [[ -z "${BUNDLE_IMAGE}" || "${BUNDLE_IMAGE}" == "null" ]]; then
-                echo -n "$replaced_image" > "$(results.unreleasedBundle.path)"
+              if [[ -z "${bundle_image}" || "${bundle_image}" == "null" ]]; then
+                write_results "${replaced_image}"
                 exit 0
               fi
 
-              if skopeo inspect --no-tags --config "docker://${BUNDLE_IMAGE}" > /dev/null 2>&1; then
-                echo -n "$BUNDLE_IMAGE" > "$(results.unreleasedBundle.path)"
+              if skopeo inspect --no-tags --config "docker://${bundle_image}" > /dev/null 2>&1; then
+                write_results "${bundle_image}"
                 exit 0
               fi
 
               process_image_digest_mirror_set "$MIRROR_SET_YAML" > /tekton/home/mirror-map.txt
-              reg_and_repo=$(get_image_registry_and_repository "${BUNDLE_IMAGE}")
+              reg_and_repo=$(get_image_registry_and_repository "${bundle_image}")
               mirrors=$(jq -r --arg source "${reg_and_repo}" '.[$source][]?' /tekton/home/mirror-map.txt)
 
-              if [[ -z "$mirrors" ]]; then
+              if [[ -z "${mirrors}" ]]; then
                 echo "No mirrors listed for $reg_and_repo in mirror map."
                 exit 1
               fi
 
-              for mirror in $mirrors; do
-                replaced_image=$(replace_image_pullspec "$BUNDLE_IMAGE" "$mirror")
+              for mirror in ${mirrors}; do
+                replaced_image=$(replace_image_pullspec "$bundle_image" "$mirror")
                 if skopeo inspect --no-tags --config "docker://${replaced_image}" > /dev/null 2>&1; then
-                  echo -n "$replaced_image" > "$(results.unreleasedBundle.path)"
+                  write_results "${replaced_image}"
                   exit 0
                 fi
               done

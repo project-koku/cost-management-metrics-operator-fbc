@@ -22,24 +22,10 @@ spec:
       type: string
       description: Temporary override to force testing with a released bundle image.
       default: ""
-    - name: CREDENTIALS_SECRET_NAME
-      type: string
-      description: Registry credentials used for artifact publishing.
-    - name: OCI_REF
-      type: string
-      description: OCI artifact target for test artifacts.
     - name: PATH_TO_MIRROR_SET
       type: string
       description: Path to ImageDigestMirrorSet file in source repo.
       default: .tekton/images-mirror-set.yaml
-    - name: REPO_TOKEN
-      type: string
-      description: Secret name containing token for private source repository.
-      default: ""
-    - name: REPO_KEY
-      type: string
-      description: Secret key name containing private source token.
-      default: ""
     - name: IQE_PLUGINS
       type: string
       default: cost_management

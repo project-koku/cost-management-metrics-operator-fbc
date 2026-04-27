@@ -156,7 +156,7 @@ spec:
           - name: channelName
             description: Resolved channel name.
         steps:
-          - name: resolve-bundle-image
+          - name: prepare-bundle-inputs
             image: quay.io/konflux-ci/konflux-test:v1.4.48
             env:
               - name: FBC_FRAGMENT
@@ -167,24 +167,17 @@ spec:
                 value: $(params.CHANNEL_NAME)
               - name: BUNDLE_IMAGE_OVERRIDE
                 value: "$(params.RELEASED_BUNDLE_IMAGE_OVERRIDE)"
-              - name: MIRROR_SET_YAML
-                value: "$(tasks.fetch-config-files.results.mirrorSetYaml)"
             script: |
               #!/usr/bin/env bash
               set -euo pipefail
-              . /utils.sh
+              STATE_DIR="/tekton/home/unreleased-bundle-state"
+              mkdir -p "${STATE_DIR}"
 
-              write_results() {
-                local bundle_image="${1:-}"
-                echo -n "${bundle_image}" > "$(results.unreleasedBundle.path)"
-                echo -n "${resolved_package}" > "$(results.packageName.path)"
-                echo -n "${resolved_channel}" > "$(results.channelName.path)"
-              }
+              if [[ -z "${FBC_FRAGMENT}" ]]; then
+                echo "Error: FBC_FRAGMENT parameter is required." >&2
+                exit 1
+              fi
 
-              bundle_image=""
-              resolved_package="${PACKAGE_NAME}"
-              resolved_channel="${CHANNEL_NAME}"
-              replaced_image=""
               # Treat unset/blank/null-like override values as "not provided".
               normalized_override="${BUNDLE_IMAGE_OVERRIDE:-}"
               normalized_override="${normalized_override#"${normalized_override%%[![:space:]]*}"}"
@@ -193,28 +186,62 @@ spec:
                 normalized_override=""
               fi
 
-              if [[ -n "${normalized_override}" ]]; then
-                # When testing a released bundle, skip the unreleased-bundle lookup entirely.
-                echo "Skipping unreleased bundle lookup because RELEASED_BUNDLE_IMAGE_OVERRIDE is set."
-                echo "Using released bundle override: ${normalized_override}"
-                bundle_image="${normalized_override}"
+              echo -n "${normalized_override}" > "${STATE_DIR}/normalized_override.txt"
+              echo -n "${PACKAGE_NAME}" > "${STATE_DIR}/resolved_package.txt"
+              echo -n "${CHANNEL_NAME}" > "${STATE_DIR}/resolved_channel.txt"
+              : > "${STATE_DIR}/unreleased_bundles.txt"
+              : > "${STATE_DIR}/selected_bundle.txt"
+
+          - name: discover-unreleased-bundles
+            image: quay.io/konflux-ci/konflux-test:v1.4.48
+            env:
+              - name: FBC_FRAGMENT
+                value: "$(tasks.parse-metadata.results.component-container-image)"
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+              . /utils.sh
+              STATE_DIR="/tekton/home/unreleased-bundle-state"
+
+              echo "Retrieving unreleased bundles..."
+              err_file="$(mktemp)"
+              err_output=""
+              unreleased_bundles=""
+              if ! unreleased_bundles=$(get_unreleased_bundles -i "$FBC_FRAGMENT" 2>"${err_file}"); then
+                err_output="$(tr '\n' ' ' < "${err_file}")"
+                echo "WARN: Could not discover unreleased bundle images from the fragment."
+                if [[ -n "${err_output}" ]]; then
+                  echo "WARN: get_unreleased_bundles stderr: ${err_output}"
+                fi
+              fi
+              rm -f "${err_file}"
+              echo -n "${unreleased_bundles}" > "${STATE_DIR}/unreleased_bundles.txt"
+
+          - name: select-bundle-image
+            image: quay.io/konflux-ci/konflux-test:v1.4.48
+            env:
+              - name: FBC_FRAGMENT
+                value: "$(tasks.parse-metadata.results.component-container-image)"
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+              . /utils.sh
+              STATE_DIR="/tekton/home/unreleased-bundle-state"
+              normalized_override="$(<"${STATE_DIR}/normalized_override.txt")"
+              resolved_package="$(<"${STATE_DIR}/resolved_package.txt")"
+              resolved_channel="$(<"${STATE_DIR}/resolved_channel.txt")"
+              unreleased_bundles="$(<"${STATE_DIR}/unreleased_bundles.txt")"
+              bundle_image=""
+
+              if [[ -z "${unreleased_bundles}" ]]; then
+                if [[ -n "${normalized_override}" ]]; then
+                  echo "No unreleased bundles found (or discovery failed). Using RELEASED_BUNDLE_IMAGE_OVERRIDE."
+                  bundle_image="${normalized_override}"
+                else
+                  echo "No unreleased bundles found and no RELEASED_BUNDLE_IMAGE_OVERRIDE provided. Exiting as a no-op."
+                  bundle_image=""
+                fi
               else
-                if [[ -z "${FBC_FRAGMENT}" ]]; then
-                  echo "Error: FBC_FRAGMENT parameter is required." >&2
-                  exit 1
-                fi
-
-                echo "Retrieving unreleased bundles..."
-                if ! unreleased_bundles=$(get_unreleased_bundles -i "$FBC_FRAGMENT"); then
-                  echo "Could not get unreleased bundle images from the fragment. Make sure you have ImagePullCredentials for registry.redhat.io" >&2
-                  exit 1
-                fi
-
-                if [[ -z "${unreleased_bundles}" ]]; then
-                  echo "No unreleased bundles found. Exiting as a no-op."
-                  write_results ""
-                  exit 0
-                fi
                 echo "Unreleased bundles found: ${unreleased_bundles}"
 
                 if ! render_out_fbc=$(render_opm -t "$FBC_FRAGMENT"); then
@@ -247,15 +274,45 @@ spec:
                 echo "Using channel: ${resolved_channel}"
 
                 if ! bundle_image=$(get_highest_version_from_bundles_list "$render_out_fbc" "$resolved_package" "$resolved_channel" "$unreleased_bundles"); then
-                  echo "No unreleased bundle(s) found matching the specified package and/or channel. Exiting as a no-op."
-                  write_results ""
-                  exit 0
+                  if [[ -n "${normalized_override}" ]]; then
+                    echo "No unreleased bundle(s) found matching the specified package/channel. Using RELEASED_BUNDLE_IMAGE_OVERRIDE."
+                    bundle_image="${normalized_override}"
+                  else
+                    echo "No unreleased bundle(s) found matching the specified package/channel. Exiting as a no-op."
+                    bundle_image=""
+                  fi
                 fi
                 echo "Highest bundle: ${bundle_image}"
               fi
 
+              echo -n "${resolved_package}" > "${STATE_DIR}/resolved_package.txt"
+              echo -n "${resolved_channel}" > "${STATE_DIR}/resolved_channel.txt"
+              echo -n "${bundle_image}" > "${STATE_DIR}/selected_bundle.txt"
+
+          - name: verify-bundle-access-and-write-results
+            image: quay.io/konflux-ci/konflux-test:v1.4.48
+            env:
+              - name: MIRROR_SET_YAML
+                value: "$(tasks.fetch-config-files.results.mirrorSetYaml)"
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+              . /utils.sh
+              STATE_DIR="/tekton/home/unreleased-bundle-state"
+              resolved_package="$(<"${STATE_DIR}/resolved_package.txt")"
+              resolved_channel="$(<"${STATE_DIR}/resolved_channel.txt")"
+              bundle_image="$(<"${STATE_DIR}/selected_bundle.txt")"
+              replaced_image=""
+
+              write_results() {
+                local selected_bundle="${1:-}"
+                echo -n "${selected_bundle}" > "$(results.unreleasedBundle.path)"
+                echo -n "${resolved_package}" > "$(results.packageName.path)"
+                echo -n "${resolved_channel}" > "$(results.channelName.path)"
+              }
+
               if [[ -z "${bundle_image}" || "${bundle_image}" == "null" ]]; then
-                write_results "${replaced_image}"
+                write_results ""
                 exit 0
               fi
 

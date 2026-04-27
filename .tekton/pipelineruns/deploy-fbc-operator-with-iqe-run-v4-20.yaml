@@ -21,6 +21,8 @@ spec:
       value: "--iqe-force-default-user=cost_management:iqe_prod"
     - name: DYNACONF_IQE_VAULT_ROLE_ID
       value: "6f1add7c-cf53-5190-16fa-51ef09046b14"
+    - name: RELEASED_BUNDLE_IMAGE_OVERRIDE
+      value: ""
   timeouts:
     pipeline: "2h30m0s"
   taskRunTemplate:

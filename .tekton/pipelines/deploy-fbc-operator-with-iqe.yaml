@@ -185,12 +185,19 @@ spec:
               resolved_package="${PACKAGE_NAME}"
               resolved_channel="${CHANNEL_NAME}"
               replaced_image=""
+              # Treat unset/blank/null-like override values as "not provided".
+              normalized_override="${BUNDLE_IMAGE_OVERRIDE:-}"
+              normalized_override="${normalized_override#"${normalized_override%%[![:space:]]*}"}"
+              normalized_override="${normalized_override%"${normalized_override##*[![:space:]]}"}"
+              if [[ "${normalized_override}" == "null" ]]; then
+                normalized_override=""
+              fi
 
-              if [[ -n "${BUNDLE_IMAGE_OVERRIDE}" ]]; then
+              if [[ -n "${normalized_override}" ]]; then
                 # When testing a released bundle, skip the unreleased-bundle lookup entirely.
                 echo "Skipping unreleased bundle lookup because RELEASED_BUNDLE_IMAGE_OVERRIDE is set."
-                echo "Using released bundle override: ${BUNDLE_IMAGE_OVERRIDE}"
-                bundle_image="${BUNDLE_IMAGE_OVERRIDE}"
+                echo "Using released bundle override: ${normalized_override}"
+                bundle_image="${normalized_override}"
               else
                 if [[ -z "${FBC_FRAGMENT}" ]]; then
                   echo "Error: FBC_FRAGMENT parameter is required." >&2

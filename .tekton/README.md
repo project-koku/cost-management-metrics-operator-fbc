@@ -25,6 +25,20 @@ Current high-level runtime flow:
 2. Run IQE operator coverage.
 3. Run final verification checks (for example image-source validation).
 
+## IQE prerequisites
+
+IQE automation in this pipeline has two required access dependencies:
+
+- **Vault access:** the IQE run uses Vault-backed configuration and reads
+  `DYNACONF_IQE_VAULT_SECRET_ID` from secret `cost-mgmt-vault-ci-secret`.
+  Ensure the namespace has this secret and that `DYNACONF_IQE_VAULT_ROLE_ID`
+  is set for the run when Vault loader is enabled.
+- **IQE image pull secret/access:** default IQE image is
+  `quay.io/cloudservices/iqe-tests:cost-management`. The PipelineRun service
+  account must be able to pull this image (for example through configured pull
+  credentials/imagePullSecrets), or the `verify-iqe-image-access`/`run-iqe`
+  steps will fail.
+
 ## Tasks
 
 This repository currently defines one local task:

@@ -1,0 +1,36 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: deploy-fbc-operator-with-iqe-run-v4-17
+  labels:
+    upstream-usable: "true"
+spec:
+  pipelineRef:
+    resolver: git
+    params:
+      - name: url
+        value: https://github.com/project-koku/cost-management-metrics-operator-fbc.git
+      - name: revision
+        value: main
+      - name: pathInRepo
+        value: .tekton/pipelines/deploy-fbc-operator-with-iqe.yaml
+  params:
+    - name: DYNACONF_IQE_VAULT_LOADER_ENABLED
+      value: "true"
+    - name: IQE_EXTRA_ARGS
+      value: "--iqe-force-default-user=cost_management:iqe_prod"
+    - name: DYNACONF_IQE_VAULT_ROLE_ID
+      value: "6f1add7c-cf53-5190-16fa-51ef09046b14"
+  timeouts:
+    pipeline: "2h30m0s"
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-costmanagement-metrics-operator-fbc-component-v4-17
+  workspaces:
+    - name: shared-data
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi

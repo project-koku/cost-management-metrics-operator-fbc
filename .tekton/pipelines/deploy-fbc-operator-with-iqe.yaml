@@ -107,8 +107,6 @@ spec:
         workspaces:
           - name: shared-data
         results:
-          - name: mirrorSetYaml
-            description: Contents of the mirror set yaml file.
           - name: serializedMirrorSetYaml
             description: Mirror entries used for imageContentSources.
         steps:
@@ -132,7 +130,7 @@ spec:
                 exit 1
               fi
 
-              echo -n "${mirror_set_yaml}" > "$(results.mirrorSetYaml.path)"
+              echo -n "${mirror_set_yaml}" > /workspace/shared-data/mirrorSet.yaml
               serialized_mirror_set=$(serialize_image_mirrors_yaml "${mirror_set_yaml}")
               echo -e "${serialized_mirror_set}" > "$(results.serializedMirrorSetYaml.path)"
               echo -e "${serialized_mirror_set}" > /workspace/shared-data/serializedMirrorSet.yaml
@@ -143,209 +141,207 @@ spec:
     - name: get-unreleased-bundle
       runAfter:
         - fetch-config-files
+      timeout: "10m"
+      when:
+        - input: $(tasks.parse-metadata.results.test-event-type)
+          operator: in
+          values: ["push", "Push", "pull_request"]
+      workspaces:
+        - name: shared-data
+          workspace: shared-data
+      taskSpec:
+        workspaces:
+          - name: shared-data
+        results:
+          - name: unreleasedBundle
+            description: Unreleased bundle image (may be mirrored).
+          - name: packageName
+            description: Resolved OLM package name.
+          - name: channelName
+            description: Resolved OLM channel name.
+        steps:
+          - name: discover-unreleased-bundle
+            onError: continue
+            computeResources:
+              limits:
+                memory: 8Gi
+              requests:
+                memory: 8Gi
+                cpu: '1'
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/tekton-integration-catalog.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/bundles/get-unreleased-bundle/0.1/get-unreleased-bundle.yaml
+            params:
+              - name: fbcFragment
+                value: "$(tasks.parse-metadata.results.component-container-image)"
+              - name: packageName
+                value: $(params.PACKAGE_NAME)
+              - name: channelName
+                value: $(params.CHANNEL_NAME)
+          - name: process-and-write-results
+            image: quay.io/konflux-ci/konflux-test:v1.4.48
+            env:
+              - name: BUNDLE_IMAGE
+                value: "$(steps.discover-unreleased-bundle.results.unreleasedBundle)"
+              - name: DISCOVERED_PACKAGE
+                value: "$(steps.discover-unreleased-bundle.results.packageName)"
+              - name: DISCOVERED_CHANNEL
+                value: "$(steps.discover-unreleased-bundle.results.channelName)"
+              - name: FALLBACK_PACKAGE
+                value: "$(params.PACKAGE_NAME)"
+              - name: FALLBACK_CHANNEL
+                value: "$(params.CHANNEL_NAME)"
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+              . /utils.sh
+
+              package="${DISCOVERED_PACKAGE:-${FALLBACK_PACKAGE}}"
+              channel="${DISCOVERED_CHANNEL:-${FALLBACK_CHANNEL}}"
+
+              write_results() {
+                echo -n "${1:-}" > "$(results.unreleasedBundle.path)"
+                echo -n "${package}" > "$(results.packageName.path)"
+                echo -n "${channel}" > "$(results.channelName.path)"
+              }
+
+              if [[ -z "${BUNDLE_IMAGE}" || "${BUNDLE_IMAGE}" == "null" ]]; then
+                echo "No unreleased bundle discovered."
+                write_results ""
+                exit 0
+              fi
+
+              if skopeo inspect --no-tags --config "docker://${BUNDLE_IMAGE}" > /dev/null 2>&1; then
+                echo "Bundle image ${BUNDLE_IMAGE} is pullable. Using as-is."
+                write_results "${BUNDLE_IMAGE}"
+                exit 0
+              fi
+              echo "Could not inspect ${BUNDLE_IMAGE}. Checking mirrors."
+
+              MIRROR_SET_YAML="$(cat /workspace/shared-data/mirrorSet.yaml 2>/dev/null || true)"
+              if [[ -z "${MIRROR_SET_YAML}" ]]; then
+                echo "No mirror set YAML available. Cannot resolve mirror."
+                write_results ""
+                exit 0
+              fi
+
+              process_image_digest_mirror_set "$MIRROR_SET_YAML" > /tekton/home/mirror-map.txt
+              reg_and_repo=$(get_image_registry_and_repository "${BUNDLE_IMAGE}")
+              mirrors=$(get_image_mirror_list "${reg_and_repo}" "$(cat /tekton/home/mirror-map.txt)")
+
+              if [[ -z "${mirrors}" ]]; then
+                echo "No mirrors listed for ${reg_and_repo} in mirror map."
+                write_results ""
+                exit 0
+              fi
+
+              for mirror in ${mirrors}; do
+                replaced_image=$(replace_image_pullspec "${BUNDLE_IMAGE}" "${mirror}")
+                echo "Attempting mirror: ${replaced_image}"
+                if skopeo inspect --no-tags --config "docker://${replaced_image}" > /dev/null 2>&1; then
+                  echo "Successfully using mirror image ${replaced_image}"
+                  write_results "${replaced_image}"
+                  exit 0
+                fi
+              done
+
+              echo "No working mirrors found for ${reg_and_repo}."
+              write_results ""
+
+    - name: resolve-bundle-override
+      runAfter:
+        - fetch-config-files
       when:
         - input: $(tasks.parse-metadata.results.test-event-type)
           operator: in
           values: ["push", "Push", "pull_request"]
       taskSpec:
         results:
-          - name: unreleasedBundle
-            description: Unreleased bundle image (or mirrored variant).
-          - name: packageName
-            description: Resolved package name.
-          - name: channelName
-            description: Resolved channel name.
+          - name: bundleOverride
+            description: Normalized override bundle image, empty if not provided.
         steps:
-          - name: prepare-bundle-inputs
+          - name: normalize-override
             image: quay.io/konflux-ci/konflux-test:v1.4.48
             env:
-              - name: FBC_FRAGMENT
-                value: "$(tasks.parse-metadata.results.component-container-image)"
-              - name: PACKAGE_NAME
-                value: $(params.PACKAGE_NAME)
-              - name: CHANNEL_NAME
-                value: $(params.CHANNEL_NAME)
               - name: BUNDLE_IMAGE_OVERRIDE
                 value: "$(params.RELEASED_BUNDLE_IMAGE_OVERRIDE)"
             script: |
               #!/usr/bin/env bash
               set -euo pipefail
-              STATE_DIR="/tekton/home/unreleased-bundle-state"
-              mkdir -p "${STATE_DIR}"
-
-              if [[ -z "${FBC_FRAGMENT}" ]]; then
-                echo "Error: FBC_FRAGMENT parameter is required." >&2
-                exit 1
+              override="${BUNDLE_IMAGE_OVERRIDE:-}"
+              override="${override#"${override%%[![:space:]]*}"}"
+              override="${override%"${override##*[![:space:]]}"}"
+              if [[ "${override}" == "null" ]]; then
+                override=""
               fi
-
-              # Treat unset/blank/null-like override values as "not provided".
-              normalized_override="${BUNDLE_IMAGE_OVERRIDE:-}"
-              normalized_override="${normalized_override#"${normalized_override%%[![:space:]]*}"}"
-              normalized_override="${normalized_override%"${normalized_override##*[![:space:]]}"}"
-              if [[ "${normalized_override}" == "null" ]]; then
-                normalized_override=""
-              fi
-
-              echo -n "${normalized_override}" > "${STATE_DIR}/normalized_override.txt"
-              echo -n "${PACKAGE_NAME}" > "${STATE_DIR}/resolved_package.txt"
-              echo -n "${CHANNEL_NAME}" > "${STATE_DIR}/resolved_channel.txt"
-              : > "${STATE_DIR}/unreleased_bundles.txt"
-              : > "${STATE_DIR}/selected_bundle.txt"
-
-          - name: discover-unreleased-bundles
-            image: quay.io/konflux-ci/konflux-test:v1.4.48
-            env:
-              - name: FBC_FRAGMENT
-                value: "$(tasks.parse-metadata.results.component-container-image)"
-            script: |
-              #!/usr/bin/env bash
-              set -euo pipefail
-              . /utils.sh
-              STATE_DIR="/tekton/home/unreleased-bundle-state"
-
-              echo "Retrieving unreleased bundles..."
-              err_file="$(mktemp)"
-              err_output=""
-              unreleased_bundles=""
-              if ! unreleased_bundles=$(get_unreleased_bundles -i "$FBC_FRAGMENT" 2>"${err_file}"); then
-                err_output="$(tr '\n' ' ' < "${err_file}")"
-                echo "WARN: Could not discover unreleased bundle images from the fragment."
-                if [[ -n "${err_output}" ]]; then
-                  echo "WARN: get_unreleased_bundles stderr: ${err_output}"
-                fi
-              fi
-              rm -f "${err_file}"
-              echo -n "${unreleased_bundles}" > "${STATE_DIR}/unreleased_bundles.txt"
-
-          - name: select-bundle-image
-            image: quay.io/konflux-ci/konflux-test:v1.4.48
-            env:
-              - name: FBC_FRAGMENT
-                value: "$(tasks.parse-metadata.results.component-container-image)"
-            script: |
-              #!/usr/bin/env bash
-              set -euo pipefail
-              . /utils.sh
-              STATE_DIR="/tekton/home/unreleased-bundle-state"
-              normalized_override="$(<"${STATE_DIR}/normalized_override.txt")"
-              resolved_package="$(<"${STATE_DIR}/resolved_package.txt")"
-              resolved_channel="$(<"${STATE_DIR}/resolved_channel.txt")"
-              unreleased_bundles="$(<"${STATE_DIR}/unreleased_bundles.txt")"
-              bundle_image=""
-
-              if [[ -z "${unreleased_bundles}" ]]; then
-                if [[ -n "${normalized_override}" ]]; then
-                  echo "No unreleased bundles found (or discovery failed). Using RELEASED_BUNDLE_IMAGE_OVERRIDE."
-                  bundle_image="${normalized_override}"
-                else
-                  echo "No unreleased bundles found and no RELEASED_BUNDLE_IMAGE_OVERRIDE provided. Exiting as a no-op."
-                  bundle_image=""
-                fi
+              if [[ -n "${override}" ]]; then
+                echo "Override bundle provided: ${override}"
               else
-                echo "Unreleased bundles found: ${unreleased_bundles}"
-
-                if ! render_out_fbc=$(render_opm -t "$FBC_FRAGMENT"); then
-                  echo "Failed to render the FBC fragment" >&2
-                  exit 1
-                fi
-
-                if [[ -z "${resolved_package}" ]]; then
-                  echo "Checking package association of unreleased bundles..."
-                  package_image_map=$(group_bundle_images_by_package "$render_out_fbc" "$unreleased_bundles")
-                  echo "Package-image map: $package_image_map"
-                  package_count=$(echo "$package_image_map" | jq 'keys | length')
-
-                  if [[ "$package_count" -gt 1 ]]; then
-                    echo "Error: Multiple packages detected. User must specify PACKAGE_NAME." >&2
-                    exit 1
-                  fi
-
-                  resolved_package=$(echo "$package_image_map" | jq -r 'keys[0]')
-                fi
-                echo "Using package: ${resolved_package}"
-
-                if [[ -z "${resolved_channel}" ]]; then
-                  resolved_channel=$(get_channel_from_catalog "$render_out_fbc" "$resolved_package")
-                  if [[ -z "${resolved_channel}" ]]; then
-                    echo "Failed to determine a default channel for package '$resolved_package'" >&2
-                    exit 1
-                  fi
-                fi
-                echo "Using channel: ${resolved_channel}"
-
-                if ! bundle_image=$(get_highest_version_from_bundles_list "$render_out_fbc" "$resolved_package" "$resolved_channel" "$unreleased_bundles"); then
-                  if [[ -n "${normalized_override}" ]]; then
-                    echo "No unreleased bundle(s) found matching the specified package/channel. Using RELEASED_BUNDLE_IMAGE_OVERRIDE."
-                    bundle_image="${normalized_override}"
-                  else
-                    echo "No unreleased bundle(s) found matching the specified package/channel. Exiting as a no-op."
-                    bundle_image=""
-                  fi
-                fi
-                echo "Highest bundle: ${bundle_image}"
+                echo "No override bundle provided."
               fi
+              echo -n "${override}" > "$(results.bundleOverride.path)"
 
-              echo -n "${resolved_package}" > "${STATE_DIR}/resolved_package.txt"
-              echo -n "${resolved_channel}" > "${STATE_DIR}/resolved_channel.txt"
-              echo -n "${bundle_image}" > "${STATE_DIR}/selected_bundle.txt"
-
-          - name: verify-bundle-access-and-write-results
+    - name: select-bundle-image
+      runAfter:
+        - get-unreleased-bundle
+        - resolve-bundle-override
+      when:
+        - input: $(tasks.parse-metadata.results.test-event-type)
+          operator: in
+          values: ["push", "Push", "pull_request"]
+      taskSpec:
+        results:
+          - name: selectedBundle
+            description: Final bundle image to deploy.
+          - name: packageName
+            description: OLM package name for the selected bundle.
+          - name: channelName
+            description: OLM channel name for the selected bundle.
+        steps:
+          - name: select
             image: quay.io/konflux-ci/konflux-test:v1.4.48
             env:
-              - name: MIRROR_SET_YAML
-                value: "$(tasks.fetch-config-files.results.mirrorSetYaml)"
+              - name: UNRELEASED_BUNDLE
+                value: "$(tasks.get-unreleased-bundle.results.unreleasedBundle)"
+              - name: BUNDLE_OVERRIDE
+                value: "$(tasks.resolve-bundle-override.results.bundleOverride)"
+              - name: PACKAGE_NAME
+                value: "$(tasks.get-unreleased-bundle.results.packageName)"
+              - name: CHANNEL_NAME
+                value: "$(tasks.get-unreleased-bundle.results.channelName)"
             script: |
               #!/usr/bin/env bash
               set -euo pipefail
-              . /utils.sh
-              STATE_DIR="/tekton/home/unreleased-bundle-state"
-              resolved_package="$(<"${STATE_DIR}/resolved_package.txt")"
-              resolved_channel="$(<"${STATE_DIR}/resolved_channel.txt")"
-              bundle_image="$(<"${STATE_DIR}/selected_bundle.txt")"
-              replaced_image=""
+              selected=""
 
-              write_results() {
-                local selected_bundle="${1:-}"
-                echo -n "${selected_bundle}" > "$(results.unreleasedBundle.path)"
-                echo -n "${resolved_package}" > "$(results.packageName.path)"
-                echo -n "${resolved_channel}" > "$(results.channelName.path)"
-              }
-
-              if [[ -z "${bundle_image}" || "${bundle_image}" == "null" ]]; then
-                write_results ""
-                exit 0
-              fi
-
-              if skopeo inspect --no-tags --config "docker://${bundle_image}" > /dev/null 2>&1; then
-                write_results "${bundle_image}"
-                exit 0
-              fi
-
-              process_image_digest_mirror_set "$MIRROR_SET_YAML" > /tekton/home/mirror-map.txt
-              reg_and_repo=$(get_image_registry_and_repository "${bundle_image}")
-              mirrors=$(jq -r --arg source "${reg_and_repo}" '.[$source][]?' /tekton/home/mirror-map.txt)
-
-              if [[ -z "${mirrors}" ]]; then
-                echo "No mirrors listed for $reg_and_repo in mirror map."
-                exit 1
-              fi
-
-              for mirror in ${mirrors}; do
-                replaced_image=$(replace_image_pullspec "$bundle_image" "$mirror")
-                if skopeo inspect --no-tags --config "docker://${replaced_image}" > /dev/null 2>&1; then
-                  write_results "${replaced_image}"
-                  exit 0
+              if [[ -n "${UNRELEASED_BUNDLE}" ]]; then
+                echo "Unreleased bundle available: ${UNRELEASED_BUNDLE}"
+                if [[ -n "${BUNDLE_OVERRIDE}" ]]; then
+                  echo "Override also provided but unreleased bundle takes precedence."
                 fi
-              done
+                selected="${UNRELEASED_BUNDLE}"
+              elif [[ -n "${BUNDLE_OVERRIDE}" ]]; then
+                echo "No unreleased bundle. Using override: ${BUNDLE_OVERRIDE}"
+                selected="${BUNDLE_OVERRIDE}"
+              else
+                echo "No unreleased bundle and no override provided. Exiting as a no-op."
+              fi
 
-              echo "No working mirrors found for $reg_and_repo"
-              exit 1
+              echo -n "${selected}" > "$(results.selectedBundle.path)"
+              echo -n "${PACKAGE_NAME}" > "$(results.packageName.path)"
+              echo -n "${CHANNEL_NAME}" > "$(results.channelName.path)"
 
     - name: pick-cluster-params
       runAfter:
-        - get-unreleased-bundle
+        - select-bundle-image
       when:
-        - input: "$(tasks.get-unreleased-bundle.results.unreleasedBundle)"
+        - input: "$(tasks.select-bundle-image.results.selectedBundle)"
           operator: notin
           values: [""]
         - input: $(tasks.parse-metadata.results.test-event-type)
@@ -398,14 +394,14 @@ spec:
                   value: stepactions/bundles/pick-cluster-arch/0.1/pick-cluster-arch.yaml
             params:
               - name: bundleImage
-                value: "$(tasks.get-unreleased-bundle.results.unreleasedBundle)"
+                value: "$(tasks.select-bundle-image.results.selectedBundle)"
 
     - name: provision-cluster
       retries: 1
       runAfter:
         - pick-cluster-params
       when:
-        - input: "$(tasks.get-unreleased-bundle.results.unreleasedBundle)"
+        - input: "$(tasks.select-bundle-image.results.selectedBundle)"
           operator: notin
           values: [""]
         - input: "$(tasks.pick-cluster-params.results.ocpVersion)"

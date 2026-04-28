@@ -21,9 +21,19 @@ Upstream baseline references:
 
 Current high-level runtime flow:
 
-1. Deploy the FBC operator on an ephemeral cluster.
-2. Run IQE operator coverage.
-3. Run final verification checks (for example image-source validation).
+1. Parse metadata, provision EaaS space, and fetch mirror-set configuration.
+2. Resolve bundle image (parallel):
+   - `get-unreleased-bundle` — uses upstream step action with `onError: continue`
+     and a 10-minute task timeout; discovers unreleased bundles from the FBC
+     fragment and resolves mirror substitution.
+   - `resolve-bundle-override` — normalizes the optional
+     `RELEASED_BUNDLE_IMAGE_OVERRIDE` parameter.
+3. `select-bundle-image` — converges both results: prefers the unreleased
+   bundle when available, falls back to the override, or exits as a no-op
+   when neither is present.
+4. Pick cluster params, provision an ephemeral cluster, and deploy the operator.
+5. Run IQE operator coverage.
+6. Run final verification checks (for example image-source validation).
 
 ## IQE prerequisites
 

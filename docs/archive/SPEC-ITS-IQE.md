@@ -28,12 +28,19 @@ deployment behavior and inserts IQE execution in the post-deploy stage.
 
 Current high-level flow:
 
-1. Parse metadata and provision test infrastructure.
-2. Resolve bundle/package/channel and mirror-set configuration.
-3. Provision ephemeral cluster and deploy the operator.
-4. Run IQE operator coverage (`cost_management` plugin / `cost_operator`
+1. Parse metadata, provision EaaS space, and fetch mirror-set configuration.
+2. Resolve bundle image (parallel tasks after `fetch-config-files`):
+   - `get-unreleased-bundle` — uses the upstream `get-unreleased-bundle` step
+     action (`onError: continue`, 10-minute task timeout) and resolves mirror
+     substitution. Writes empty result on failure instead of failing the pipeline.
+   - `resolve-bundle-override` — normalizes the optional
+     `RELEASED_BUNDLE_IMAGE_OVERRIDE` parameter.
+3. `select-bundle-image` — converges both results: prefers unreleased bundle,
+   falls back to override, or exits as a no-op when neither is present.
+4. Pick cluster params, provision ephemeral cluster, and deploy the operator.
+5. Run IQE operator coverage (`cost_management` plugin / `cost_operator`
    marker by default).
-5. Run final verification and completion checks.
+6. Run final verification and completion checks.
 
 ## Finalized defaults and behavior
 

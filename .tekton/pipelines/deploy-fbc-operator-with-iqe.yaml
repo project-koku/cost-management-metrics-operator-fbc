@@ -43,7 +43,7 @@ spec:
       default: prod
     - name: IQE_EXTRA_ARGS
       type: string
-      default: ""
+      default: "--iqe-force-default-user=cost_management:iqe_prod"
     - name: DYNACONF_IQE_VAULT_LOADER_ENABLED
       type: string
       default: "true"
@@ -58,7 +58,7 @@ spec:
       default: "true"
     - name: DYNACONF_IQE_VAULT_ROLE_ID
       type: string
-      default: ""
+      default: "6f1add7c-cf53-5190-16fa-51ef09046b14"
   tasks:
     - name: parse-metadata
       taskRef:

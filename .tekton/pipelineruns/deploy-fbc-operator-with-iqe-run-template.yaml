@@ -15,12 +15,6 @@ spec:
       - name: pathInRepo
         value: .tekton/pipelines/deploy-fbc-operator-with-iqe.yaml
   params:
-    - name: DYNACONF_IQE_VAULT_LOADER_ENABLED
-      value: "true"
-    - name: IQE_EXTRA_ARGS
-      value: "--iqe-force-default-user=cost_management:iqe_prod"
-    - name: DYNACONF_IQE_VAULT_ROLE_ID
-      value: "6f1add7c-cf53-5190-16fa-51ef09046b14"
     - name: RELEASED_BUNDLE_IMAGE_OVERRIDE
       value: ""
   timeouts:

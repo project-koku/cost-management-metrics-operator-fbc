@@ -1,9 +1,7 @@
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  name: deploy-fbc-operator-with-iqe-run-v4-20
-  labels:
-    upstream-usable: "true"
+  name: deploy-fbc-operator-with-iqe-run-v4-21
 spec:
   pipelineRef:
     resolver: git
@@ -16,11 +14,11 @@ spec:
         value: .tekton/pipelines/deploy-fbc-operator-with-iqe.yaml
   params:
     - name: RELEASED_BUNDLE_IMAGE_OVERRIDE
-      value: "registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle@sha256:a6f6dff216289f9d56edba7d413a6bfc429624eb324ca4459a2fbd0e6f622519"
+      value: ""
   timeouts:
     pipeline: "2h30m0s"
   taskRunTemplate:
-    serviceAccountName: build-pipeline-costmanagement-metrics-operator-fbc-component-v4-20
+    serviceAccountName: build-pipeline-costmanagement-metrics-operator-fbc-component-v4-21
   workspaces:
     - name: shared-data
       volumeClaimTemplate:

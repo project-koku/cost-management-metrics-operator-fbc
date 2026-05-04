@@ -1,0 +1,648 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: deploy-fbc-operator-with-iqe
+spec:
+  description: >
+    Extension pipeline that preserves deploy-fbc-operator baseline behavior and
+    inserts IQE execution after operator deployment.
+  workspaces:
+    - name: shared-data
+  params:
+    - name: SNAPSHOT
+      type: string
+      description: Integration snapshot payload.
+    - name: PACKAGE_NAME
+      type: string
+      default: costmanagement-metrics-operator
+    - name: CHANNEL_NAME
+      type: string
+      default: stable
+    - name: RELEASED_BUNDLE_IMAGE_OVERRIDE
+      type: string
+      description: Temporary override to force testing with a released bundle image.
+      default: ""
+    - name: PATH_TO_MIRROR_SET
+      type: string
+      description: Path to ImageDigestMirrorSet file in source repo.
+      default: .tekton/images-mirror-set.yaml
+    - name: IQE_PLUGINS
+      type: string
+      default: cost_management
+    - name: IQE_IMAGE
+      type: string
+      default: quay.io/cloudservices/iqe-tests:cost-management
+    - name: IQE_MARKER_EXPRESSION
+      type: string
+      default: cost_operator
+    - name: IQE_FILTER_EXPRESSION
+      type: string
+      default: ""
+    - name: IQE_ENV
+      type: string
+      default: prod
+    - name: IQE_EXTRA_ARGS
+      type: string
+      default: "--iqe-force-default-user=cost_management:iqe_prod"
+    - name: DYNACONF_IQE_VAULT_LOADER_ENABLED
+      type: string
+      default: "true"
+    - name: DYNACONF_IQE_VAULT_URL
+      type: string
+      default: https://vault.ci.ext.devshift.net
+    - name: DYNACONF_IQE_VAULT_MOUNT_POINT
+      type: string
+      default: insights
+    - name: DYNACONF_IQE_VAULT_VERIFY
+      type: string
+      default: "true"
+    - name: DYNACONF_IQE_VAULT_ROLE_ID
+      type: string
+      default: "6f1add7c-cf53-5190-16fa-51ef09046b14"
+  tasks:
+    - name: parse-metadata
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/konflux-ci/integration-examples
+          - name: revision
+            value: main
+          - name: pathInRepo
+            value: tasks/test_metadata.yaml
+      params:
+        - name: SNAPSHOT
+          value: $(params.SNAPSHOT)
+
+    - name: provision-eaas-space
+      runAfter:
+        - parse-metadata
+      when:
+        - input: $(tasks.parse-metadata.results.test-event-type)
+          operator: in
+          values: ["push", "Push", "pull_request"]
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/konflux-ci/build-definitions.git
+          - name: revision
+            value: main
+          - name: pathInRepo
+            value: task/eaas-provision-space/0.1/eaas-provision-space.yaml
+      params:
+        - name: ownerName
+          value: $(context.pipelineRun.name)
+        - name: ownerUid
+          value: $(context.pipelineRun.uid)
+
+    - name: fetch-config-files
+      runAfter:
+        - provision-eaas-space
+      when:
+        - input: $(tasks.parse-metadata.results.test-event-type)
+          operator: in
+          values: ["push", "Push", "pull_request"]
+      taskSpec:
+        workspaces:
+          - name: shared-data
+        results:
+          - name: serializedMirrorSetYaml
+            description: Mirror entries used for imageContentSources.
+        steps:
+          - name: retrieve-mirror-set
+            image: quay.io/konflux-ci/konflux-test:v1.4.48
+            env:
+              - name: SOURCE_GIT_URL
+                value: "$(tasks.parse-metadata.results.source-git-url)"
+              - name: SOURCE_GIT_REVISION
+                value: "$(tasks.parse-metadata.results.source-git-revision)"
+              - name: PATH_TO_MIRROR_SET
+                value: $(params.PATH_TO_MIRROR_SET)
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+              . /utils.sh
+              mirror_set_url="${SOURCE_GIT_URL}/raw/${SOURCE_GIT_REVISION}/${PATH_TO_MIRROR_SET}"
+              mirror_set_yaml=$(curl -kfLs "$mirror_set_url" 2>/dev/null)
+              if [[ -z "${mirror_set_yaml}" ]]; then
+                echo "Could not fetch image mirror set at ${mirror_set_url}."
+                exit 1
+              fi
+
+              echo -n "${mirror_set_yaml}" > /workspace/shared-data/mirrorSet.yaml
+              serialized_mirror_set=$(serialize_image_mirrors_yaml "${mirror_set_yaml}")
+              echo -e "${serialized_mirror_set}" > "$(results.serializedMirrorSetYaml.path)"
+              echo -e "${serialized_mirror_set}" > /workspace/shared-data/serializedMirrorSet.yaml
+      workspaces:
+        - name: shared-data
+          workspace: shared-data
+
+    - name: get-unreleased-bundle
+      runAfter:
+        - fetch-config-files
+      timeout: "10m"
+      when:
+        - input: $(tasks.parse-metadata.results.test-event-type)
+          operator: in
+          values: ["push", "Push", "pull_request"]
+      workspaces:
+        - name: shared-data
+          workspace: shared-data
+      taskSpec:
+        workspaces:
+          - name: shared-data
+        results:
+          - name: unreleasedBundle
+            description: Unreleased bundle image (may be mirrored).
+          - name: packageName
+            description: Resolved OLM package name.
+          - name: channelName
+            description: Resolved OLM channel name.
+        steps:
+          - name: discover-unreleased-bundle
+            onError: continue
+            computeResources:
+              limits:
+                memory: 8Gi
+              requests:
+                memory: 8Gi
+                cpu: '1'
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/tekton-integration-catalog.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/bundles/get-unreleased-bundle/0.1/get-unreleased-bundle.yaml
+            params:
+              - name: fbcFragment
+                value: "$(tasks.parse-metadata.results.component-container-image)"
+              - name: packageName
+                value: $(params.PACKAGE_NAME)
+              - name: channelName
+                value: $(params.CHANNEL_NAME)
+          - name: process-and-write-results
+            image: quay.io/konflux-ci/konflux-test:v1.4.48
+            env:
+              - name: BUNDLE_IMAGE
+                value: "$(steps.discover-unreleased-bundle.results.unreleasedBundle)"
+              - name: DISCOVERED_PACKAGE
+                value: "$(steps.discover-unreleased-bundle.results.packageName)"
+              - name: DISCOVERED_CHANNEL
+                value: "$(steps.discover-unreleased-bundle.results.channelName)"
+              - name: FALLBACK_PACKAGE
+                value: "$(params.PACKAGE_NAME)"
+              - name: FALLBACK_CHANNEL
+                value: "$(params.CHANNEL_NAME)"
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+              . /utils.sh
+
+              package="${DISCOVERED_PACKAGE:-${FALLBACK_PACKAGE}}"
+              channel="${DISCOVERED_CHANNEL:-${FALLBACK_CHANNEL}}"
+
+              write_results() {
+                echo -n "${1:-}" > "$(results.unreleasedBundle.path)"
+                echo -n "${package}" > "$(results.packageName.path)"
+                echo -n "${channel}" > "$(results.channelName.path)"
+              }
+
+              if [[ -z "${BUNDLE_IMAGE}" || "${BUNDLE_IMAGE}" == "null" ]]; then
+                echo "No unreleased bundle discovered."
+                write_results ""
+                exit 0
+              fi
+
+              if skopeo inspect --no-tags --config "docker://${BUNDLE_IMAGE}" > /dev/null 2>&1; then
+                echo "Bundle image ${BUNDLE_IMAGE} is pullable. Using as-is."
+                write_results "${BUNDLE_IMAGE}"
+                exit 0
+              fi
+              echo "Could not inspect ${BUNDLE_IMAGE}. Checking mirrors."
+
+              MIRROR_SET_YAML="$(cat /workspace/shared-data/mirrorSet.yaml 2>/dev/null || true)"
+              if [[ -z "${MIRROR_SET_YAML}" ]]; then
+                echo "No mirror set YAML available. Cannot resolve mirror."
+                write_results ""
+                exit 0
+              fi
+
+              process_image_digest_mirror_set "$MIRROR_SET_YAML" > /tekton/home/mirror-map.txt
+              reg_and_repo=$(get_image_registry_and_repository "${BUNDLE_IMAGE}")
+              mirrors=$(get_image_mirror_list "${reg_and_repo}" "$(cat /tekton/home/mirror-map.txt)")
+
+              if [[ -z "${mirrors}" ]]; then
+                echo "No mirrors listed for ${reg_and_repo} in mirror map."
+                write_results ""
+                exit 0
+              fi
+
+              for mirror in ${mirrors}; do
+                replaced_image=$(replace_image_pullspec "${BUNDLE_IMAGE}" "${mirror}")
+                echo "Attempting mirror: ${replaced_image}"
+                if skopeo inspect --no-tags --config "docker://${replaced_image}" > /dev/null 2>&1; then
+                  echo "Successfully using mirror image ${replaced_image}"
+                  write_results "${replaced_image}"
+                  exit 0
+                fi
+              done
+
+              echo "No working mirrors found for ${reg_and_repo}."
+              write_results ""
+
+    - name: resolve-bundle-override
+      runAfter:
+        - fetch-config-files
+      when:
+        - input: $(tasks.parse-metadata.results.test-event-type)
+          operator: in
+          values: ["push", "Push", "pull_request"]
+      taskSpec:
+        results:
+          - name: bundleOverride
+            description: Normalized override bundle image, empty if not provided.
+        steps:
+          - name: normalize-override
+            image: quay.io/konflux-ci/konflux-test:v1.4.48
+            env:
+              - name: BUNDLE_IMAGE_OVERRIDE
+                value: "$(params.RELEASED_BUNDLE_IMAGE_OVERRIDE)"
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+              override="${BUNDLE_IMAGE_OVERRIDE:-}"
+              override="${override#"${override%%[![:space:]]*}"}"
+              override="${override%"${override##*[![:space:]]}"}"
+              if [[ "${override}" == "null" ]]; then
+                override=""
+              fi
+              if [[ -n "${override}" ]]; then
+                echo "Override bundle provided: ${override}"
+              else
+                echo "No override bundle provided."
+              fi
+              echo -n "${override}" > "$(results.bundleOverride.path)"
+
+    - name: select-bundle-image
+      runAfter:
+        - get-unreleased-bundle
+        - resolve-bundle-override
+      when:
+        - input: $(tasks.parse-metadata.results.test-event-type)
+          operator: in
+          values: ["push", "Push", "pull_request"]
+      taskSpec:
+        results:
+          - name: selectedBundle
+            description: Final bundle image to deploy.
+          - name: packageName
+            description: OLM package name for the selected bundle.
+          - name: channelName
+            description: OLM channel name for the selected bundle.
+        steps:
+          - name: select
+            image: quay.io/konflux-ci/konflux-test:v1.4.48
+            env:
+              - name: UNRELEASED_BUNDLE
+                value: "$(tasks.get-unreleased-bundle.results.unreleasedBundle)"
+              - name: BUNDLE_OVERRIDE
+                value: "$(tasks.resolve-bundle-override.results.bundleOverride)"
+              - name: PACKAGE_NAME
+                value: "$(tasks.get-unreleased-bundle.results.packageName)"
+              - name: CHANNEL_NAME
+                value: "$(tasks.get-unreleased-bundle.results.channelName)"
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+              selected=""
+
+              if [[ -n "${UNRELEASED_BUNDLE}" ]]; then
+                echo "Unreleased bundle available: ${UNRELEASED_BUNDLE}"
+                if [[ -n "${BUNDLE_OVERRIDE}" ]]; then
+                  echo "Override also provided but unreleased bundle takes precedence."
+                fi
+                selected="${UNRELEASED_BUNDLE}"
+              elif [[ -n "${BUNDLE_OVERRIDE}" ]]; then
+                echo "No unreleased bundle. Using override: ${BUNDLE_OVERRIDE}"
+                selected="${BUNDLE_OVERRIDE}"
+              else
+                echo "No unreleased bundle and no override provided. Exiting as a no-op."
+              fi
+
+              echo -n "${selected}" > "$(results.selectedBundle.path)"
+              echo -n "${PACKAGE_NAME}" > "$(results.packageName.path)"
+              echo -n "${CHANNEL_NAME}" > "$(results.channelName.path)"
+
+    - name: pick-cluster-params
+      runAfter:
+        - select-bundle-image
+      when:
+        - input: "$(tasks.select-bundle-image.results.selectedBundle)"
+          operator: notin
+          values: [""]
+        - input: $(tasks.parse-metadata.results.test-event-type)
+          operator: in
+          values: ["push", "Push", "pull_request"]
+      taskSpec:
+        results:
+          - name: ocpVersion
+            value: "$(steps.pick-cluster-version.results.ocpVersion)"
+          - name: bundleArch
+            value: "$(steps.pick-cluster-arch.results.bundleArch)"
+        steps:
+          - name: get-supported-versions
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/build-definitions.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/eaas-get-supported-ephemeral-cluster-versions/0.1/eaas-get-supported-ephemeral-cluster-versions.yaml
+            params:
+              - name: eaasSpaceSecretRef
+                value: "$(tasks.provision-eaas-space.results.secretRef)"
+          - name: pick-cluster-version
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/tekton-integration-catalog.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/bundles/pick-cluster-version/0.1/pick-cluster-version.yaml
+            params:
+              - name: fbcFragment
+                value: "$(tasks.parse-metadata.results.component-container-image)"
+              - name: clusterVersions
+                value: ["$(steps.get-supported-versions.results.versions[*])"]
+          - name: pick-cluster-arch
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/tekton-integration-catalog.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/bundles/pick-cluster-arch/0.1/pick-cluster-arch.yaml
+            params:
+              - name: bundleImage
+                value: "$(tasks.select-bundle-image.results.selectedBundle)"
+
+    - name: provision-cluster
+      retries: 1
+      runAfter:
+        - pick-cluster-params
+      when:
+        - input: "$(tasks.select-bundle-image.results.selectedBundle)"
+          operator: notin
+          values: [""]
+        - input: "$(tasks.pick-cluster-params.results.ocpVersion)"
+          operator: notin
+          values: [""]
+        - input: "$(tasks.pick-cluster-params.results.bundleArch)"
+          operator: notin
+          values: [""]
+        - input: $(tasks.parse-metadata.results.test-event-type)
+          operator: in
+          values: ["push", "Push", "pull_request"]
+      taskSpec:
+        workspaces:
+          - name: shared-data
+        results:
+          - name: clusterName
+            value: "$(steps.create-cluster.results.clusterName)"
+        steps:
+          - name: get-latest-version-tag
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/build-definitions.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/eaas-get-latest-openshift-version-by-prefix/0.1/eaas-get-latest-openshift-version-by-prefix.yaml
+            params:
+              - name: prefix
+                value: "$(tasks.pick-cluster-params.results.ocpVersion)"
+          - name: create-cluster
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/build-definitions.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/eaas-create-ephemeral-cluster-hypershift-aws/0.1/eaas-create-ephemeral-cluster-hypershift-aws.yaml
+            params:
+              - name: eaasSpaceSecretRef
+                value: $(tasks.provision-eaas-space.results.secretRef)
+              - name: version
+                value: "$(steps.get-latest-version-tag.results.version)"
+              - name: instanceType
+                value: "$(tasks.pick-cluster-params.results.bundleArch)"
+              - name: imageContentSourcesFile
+                value: /workspace/shared-data/serializedMirrorSet.yaml
+      workspaces:
+        - name: shared-data
+          workspace: shared-data
+
+    - name: run-iqe-cost-operator
+      runAfter:
+        - provision-cluster
+      when:
+        - input: $(tasks.parse-metadata.results.test-event-type)
+          operator: in
+          values: ["push", "Push", "pull_request"]
+      params:
+        - name: EAAS_SPACE_SECRET_REF
+          value: $(tasks.provision-eaas-space.results.secretRef)
+        - name: CLUSTER_NAME
+          value: $(tasks.provision-cluster.results.clusterName)
+        - name: IQE_PLUGINS
+          value: $(params.IQE_PLUGINS)
+        - name: IQE_IMAGE
+          value: $(params.IQE_IMAGE)
+        - name: IQE_MARKER_EXPRESSION
+          value: $(params.IQE_MARKER_EXPRESSION)
+        - name: IQE_FILTER_EXPRESSION
+          value: $(params.IQE_FILTER_EXPRESSION)
+        - name: IQE_ENV
+          value: $(params.IQE_ENV)
+        - name: IQE_EXTRA_ARGS
+          value: $(params.IQE_EXTRA_ARGS)
+        - name: DYNACONF_IQE_VAULT_LOADER_ENABLED
+          value: $(params.DYNACONF_IQE_VAULT_LOADER_ENABLED)
+        - name: DYNACONF_IQE_VAULT_URL
+          value: $(params.DYNACONF_IQE_VAULT_URL)
+        - name: DYNACONF_IQE_VAULT_MOUNT_POINT
+          value: $(params.DYNACONF_IQE_VAULT_MOUNT_POINT)
+        - name: DYNACONF_IQE_VAULT_VERIFY
+          value: $(params.DYNACONF_IQE_VAULT_VERIFY)
+        - name: DYNACONF_IQE_VAULT_ROLE_ID
+          value: $(params.DYNACONF_IQE_VAULT_ROLE_ID)
+      taskSpec:
+        params:
+          - name: EAAS_SPACE_SECRET_REF
+            type: string
+          - name: CLUSTER_NAME
+            type: string
+          - name: IQE_IMAGE
+            type: string
+            default: quay.io/cloudservices/iqe-tests:cost-management
+          - name: IQE_PLUGINS
+            type: string
+            default: cost_management
+          - name: IQE_MARKER_EXPRESSION
+            type: string
+            default: cost_operator
+          - name: IQE_FILTER_EXPRESSION
+            type: string
+            default: ""
+          - name: IQE_ENV
+            type: string
+            default: prod
+          - name: IQE_EXTRA_ARGS
+            type: string
+            default: ""
+          - name: DYNACONF_IQE_VAULT_LOADER_ENABLED
+            type: string
+            default: "true"
+          - name: DYNACONF_IQE_VAULT_URL
+            type: string
+            default: https://vault.ci.ext.devshift.net
+          - name: DYNACONF_IQE_VAULT_MOUNT_POINT
+            type: string
+            default: insights
+          - name: DYNACONF_IQE_VAULT_VERIFY
+            type: string
+            default: "true"
+          - name: DYNACONF_IQE_VAULT_ROLE_ID
+            type: string
+            default: ""
+        volumes:
+          - name: credentials
+            emptyDir: {}
+        steps:
+          - name: get-kubeconfig
+            ref:
+              resolver: git
+              params:
+                - name: url
+                  value: https://github.com/konflux-ci/build-definitions.git
+                - name: revision
+                  value: main
+                - name: pathInRepo
+                  value: stepactions/eaas-get-ephemeral-cluster-credentials/0.1/eaas-get-ephemeral-cluster-credentials.yaml
+            params:
+              - name: eaasSpaceSecretRef
+                value: $(params.EAAS_SPACE_SECRET_REF)
+              - name: clusterName
+                value: $(params.CLUSTER_NAME)
+              - name: credentials
+                value: credentials
+          - name: iqe-preflight
+            image: registry.access.redhat.com/ubi9/ubi-minimal
+            env:
+              - name: GENERATED_KUBECONFIG
+                value: "/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
+            volumeMounts:
+              - name: credentials
+                mountPath: /credentials
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+              echo "IQE preflight starting"
+              echo "IQE image: $(params.IQE_IMAGE)"
+              echo "IQE plugins: $(params.IQE_PLUGINS)"
+              echo "IQE marker: $(params.IQE_MARKER_EXPRESSION)"
+              echo "IQE env: $(params.IQE_ENV)"
+              echo "Cluster name: $(params.CLUSTER_NAME)"
+              echo "Kubeconfig path from credential step: ${GENERATED_KUBECONFIG}"
+              ls -la /credentials || true
+              if [[ ! -f "${GENERATED_KUBECONFIG}" ]]; then
+                echo "ERROR: kubeconfig file not found at ${GENERATED_KUBECONFIG}"
+                exit 1
+              fi
+              echo "IQE preflight completed"
+          - name: verify-iqe-image-access
+            image: quay.io/konflux-ci/konflux-test:v1.4.48
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+              echo "Checking IQE image access: $(params.IQE_IMAGE)"
+              skopeo inspect --no-tags "docker://$(params.IQE_IMAGE)" >/tmp/inspect.json
+              echo "IQE image is pullable"
+          - name: run-iqe
+            image: $(params.IQE_IMAGE)
+            env:
+              - name: GENERATED_KUBECONFIG
+                value: "/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
+              - name: DYNACONF_IQE_VAULT_SECRET_ID
+                valueFrom:
+                  secretKeyRef:
+                    name: cost-mgmt-vault-ci-secret
+                    key: secret-id
+            volumeMounts:
+              - name: credentials
+                mountPath: /credentials
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+              trap 'echo "IQE step failed at line $LINENO with exit code $?."' ERR
+              IQE_FILTER_EXPRESSION="$(params.IQE_FILTER_EXPRESSION)"
+              IQE_EXTRA_ARGS="$(params.IQE_EXTRA_ARGS)"
+
+              echo "Starting IQE step in image $(params.IQE_IMAGE)"
+              command -v iqe
+              iqe --help >/tmp/iqe-help.txt 2>&1 || true
+              sed -n '1,6p' /tmp/iqe-help.txt || true
+              echo "Installed IQE plugins:"
+              iqe plugin list || true
+
+              export DYNACONF_IQE_VAULT_LOADER_ENABLED="$(params.DYNACONF_IQE_VAULT_LOADER_ENABLED)"
+              export DYNACONF_IQE_VAULT_URL="$(params.DYNACONF_IQE_VAULT_URL)"
+              export DYNACONF_IQE_VAULT_VERIFY="$(params.DYNACONF_IQE_VAULT_VERIFY)"
+              export DYNACONF_IQE_VAULT_MOUNT_POINT="$(params.DYNACONF_IQE_VAULT_MOUNT_POINT)"
+              export DYNACONF_IQE_VAULT_ROLE_ID="$(params.DYNACONF_IQE_VAULT_ROLE_ID)"
+              export ENV_FOR_DYNACONF="$(params.IQE_ENV)"
+              export KUBECONFIG="${GENERATED_KUBECONFIG}"
+              echo "Using kubeconfig ${KUBECONFIG}"
+              echo "Vault loader enabled: ${DYNACONF_IQE_VAULT_LOADER_ENABLED}"
+
+              if [[ "${DYNACONF_IQE_VAULT_LOADER_ENABLED}" == "true" ]]; then
+                if [[ -z "${DYNACONF_IQE_VAULT_ROLE_ID}" || -z "${DYNACONF_IQE_VAULT_SECRET_ID}" ]]; then
+                  echo "ERROR: Vault auth requires both DYNACONF_IQE_VAULT_ROLE_ID and DYNACONF_IQE_VAULT_SECRET_ID."
+                  exit 14
+                fi
+                echo "Checking connectivity to ${DYNACONF_IQE_VAULT_URL} before IQE run..."
+                vault_no_scheme="${DYNACONF_IQE_VAULT_URL#*://}"
+                vault_hostport="${vault_no_scheme%%/*}"
+                vault_host="${vault_hostport%%:*}"
+                vault_port="443"
+                if [[ "${vault_hostport}" == *:* ]]; then
+                  vault_port="${vault_hostport##*:}"
+                fi
+                if [[ -z "${vault_host}" ]]; then
+                  echo "ERROR: Unable to parse vault host from URL '${DYNACONF_IQE_VAULT_URL}'"
+                  exit 13
+                fi
+                python -c 'import socket,sys; h=sys.argv[1]; p=int(sys.argv[2]); socket.create_connection((h,p),10).close(); print(f"Vault connectivity check passed: {h}:{p}")' \
+                  "${vault_host}" "${vault_port}" || {
+                    echo "ERROR: Vault connectivity check failed for ${vault_host}:${vault_port}"
+                    exit 12
+                  }
+              fi
+
+              iqe tests plugin "$(params.IQE_PLUGINS)" -m "$(params.IQE_MARKER_EXPRESSION)" \
+                ${IQE_FILTER_EXPRESSION:+-k "${IQE_FILTER_EXPRESSION}"} \
+                ${IQE_EXTRA_ARGS}

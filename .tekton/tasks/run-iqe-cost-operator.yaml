@@ -1,0 +1,179 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: run-iqe-cost-operator
+spec:
+  description: >
+    Runs IQE cost management operator tests against a provisioned cluster.
+    This task is intended to run after deploy-fbc-operator completes operator install.
+  params:
+    - name: EAAS_SPACE_SECRET_REF
+      type: string
+      description: Secret reference returned by EaaS space provisioning task.
+    - name: CLUSTER_NAME
+      type: string
+      description: Provisioned ephemeral cluster name.
+    - name: IQE_IMAGE
+      type: string
+      description: Container image that provides iqe CLI/runtime.
+      default: quay.io/cloudservices/iqe-tests:cost-management
+    - name: IQE_PLUGINS
+      type: string
+      description: IQE plugin list.
+      default: "cost_management"
+    - name: IQE_MARKER_EXPRESSION
+      type: string
+      description: IQE marker expression.
+      default: "cost_operator"
+    - name: IQE_FILTER_EXPRESSION
+      type: string
+      description: Optional IQE filter expression.
+      default: ""
+    - name: IQE_ENV
+      type: string
+      description: Target IQE environment profile.
+      default: "prod"
+    - name: IQE_EXTRA_ARGS
+      type: string
+      description: Additional IQE CLI args.
+      default: ""
+    - name: DYNACONF_IQE_VAULT_LOADER_ENABLED
+      type: string
+      default: "true"
+    - name: DYNACONF_IQE_VAULT_URL
+      type: string
+      default: "https://vault.ci.ext.devshift.net"
+    - name: DYNACONF_IQE_VAULT_MOUNT_POINT
+      type: string
+      default: "insights"
+    - name: DYNACONF_IQE_VAULT_VERIFY
+      type: string
+      default: "true"
+    - name: DYNACONF_IQE_VAULT_ROLE_ID
+      type: string
+      default: ""
+  volumes:
+    - name: credentials
+      emptyDir: {}
+  steps:
+    - name: get-kubeconfig
+      ref:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/konflux-ci/build-definitions.git
+          - name: revision
+            value: main
+          - name: pathInRepo
+            value: stepactions/eaas-get-ephemeral-cluster-credentials/0.1/eaas-get-ephemeral-cluster-credentials.yaml
+      params:
+        - name: eaasSpaceSecretRef
+          value: $(params.EAAS_SPACE_SECRET_REF)
+        - name: clusterName
+          value: $(params.CLUSTER_NAME)
+        - name: credentials
+          value: credentials
+    - name: iqe-preflight
+      image: registry.access.redhat.com/ubi9/ubi-minimal
+      env:
+        - name: GENERATED_KUBECONFIG
+          value: "/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
+      volumeMounts:
+        - name: credentials
+          mountPath: /credentials
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        echo "IQE preflight starting"
+        echo "IQE image: $(params.IQE_IMAGE)"
+        echo "IQE plugins: $(params.IQE_PLUGINS)"
+        echo "IQE marker: $(params.IQE_MARKER_EXPRESSION)"
+        echo "IQE env: $(params.IQE_ENV)"
+        echo "Cluster name: $(params.CLUSTER_NAME)"
+        echo "Kubeconfig path from credential step: ${GENERATED_KUBECONFIG}"
+        ls -la /credentials || true
+        if [[ ! -f "${GENERATED_KUBECONFIG}" ]]; then
+          echo "ERROR: kubeconfig file not found at ${GENERATED_KUBECONFIG}"
+          exit 1
+        fi
+        echo "IQE preflight completed"
+    - name: verify-iqe-image-access
+      image: quay.io/konflux-ci/konflux-test:v1.4.48
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        echo "Checking IQE image access: $(params.IQE_IMAGE)"
+        skopeo inspect --no-tags "docker://$(params.IQE_IMAGE)" >/tmp/inspect.json
+        echo "IQE image is pullable"
+    - name: run-iqe
+      image: $(params.IQE_IMAGE)
+      env:
+        - name: GENERATED_KUBECONFIG
+          value: "/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
+        - name: DYNACONF_IQE_VAULT_SECRET_ID
+          valueFrom:
+            secretKeyRef:
+              name: cost-mgmt-vault-ci-secret
+              key: secret-id
+      volumeMounts:
+        - name: credentials
+          mountPath: /credentials
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        trap 'echo "IQE step failed at line $LINENO with exit code $?."' ERR
+
+        echo "Starting IQE operator tests..."
+        echo "Plugins: $(params.IQE_PLUGINS)"
+        echo "Marker: $(params.IQE_MARKER_EXPRESSION)"
+        IQE_FILTER_EXPRESSION="$(params.IQE_FILTER_EXPRESSION)"
+        IQE_EXTRA_ARGS="$(params.IQE_EXTRA_ARGS)"
+        if [[ -n "${IQE_FILTER_EXPRESSION}" ]]; then
+          echo "Filter: ${IQE_FILTER_EXPRESSION}"
+        fi
+
+        echo "Starting IQE step in image $(params.IQE_IMAGE)"
+        command -v iqe
+        iqe --help >/tmp/iqe-help.txt 2>&1 || true
+        sed -n '1,6p' /tmp/iqe-help.txt || true
+        echo "Installed IQE plugins:"
+        iqe plugin list || true
+
+        export DYNACONF_IQE_VAULT_LOADER_ENABLED="$(params.DYNACONF_IQE_VAULT_LOADER_ENABLED)"
+        export DYNACONF_IQE_VAULT_URL="$(params.DYNACONF_IQE_VAULT_URL)"
+        export DYNACONF_IQE_VAULT_VERIFY="$(params.DYNACONF_IQE_VAULT_VERIFY)"
+        export DYNACONF_IQE_VAULT_MOUNT_POINT="$(params.DYNACONF_IQE_VAULT_MOUNT_POINT)"
+        export DYNACONF_IQE_VAULT_ROLE_ID="$(params.DYNACONF_IQE_VAULT_ROLE_ID)"
+        export ENV_FOR_DYNACONF="$(params.IQE_ENV)"
+        export KUBECONFIG="${GENERATED_KUBECONFIG}"
+        echo "Using kubeconfig: ${KUBECONFIG}"
+        echo "Vault loader enabled: ${DYNACONF_IQE_VAULT_LOADER_ENABLED}"
+
+        if [[ "${DYNACONF_IQE_VAULT_LOADER_ENABLED}" == "true" ]]; then
+          if [[ -z "${DYNACONF_IQE_VAULT_ROLE_ID}" || -z "${DYNACONF_IQE_VAULT_SECRET_ID}" ]]; then
+            echo "ERROR: Vault auth requires both DYNACONF_IQE_VAULT_ROLE_ID and DYNACONF_IQE_VAULT_SECRET_ID."
+            exit 14
+          fi
+          echo "Checking connectivity to ${DYNACONF_IQE_VAULT_URL} before IQE run..."
+          vault_no_scheme="${DYNACONF_IQE_VAULT_URL#*://}"
+          vault_hostport="${vault_no_scheme%%/*}"
+          vault_host="${vault_hostport%%:*}"
+          vault_port="443"
+          if [[ "${vault_hostport}" == *:* ]]; then
+            vault_port="${vault_hostport##*:}"
+          fi
+          if [[ -z "${vault_host}" ]]; then
+            echo "ERROR: Unable to parse vault host from URL '${DYNACONF_IQE_VAULT_URL}'"
+            exit 13
+          fi
+          python -c 'import socket,sys; h=sys.argv[1]; p=int(sys.argv[2]); socket.create_connection((h,p),10).close(); print(f"Vault connectivity check passed: {h}:{p}")' \
+            "${vault_host}" "${vault_port}" || {
+              echo "ERROR: Vault connectivity check failed for ${vault_host}:${vault_port}"
+              exit 12
+            }
+        fi
+
+        # The task expects iqe CLI to be present in IQE_IMAGE.
+        iqe tests plugin "$(params.IQE_PLUGINS)" -m "$(params.IQE_MARKER_EXPRESSION)" \
+          ${IQE_FILTER_EXPRESSION:+-k "${IQE_FILTER_EXPRESSION}"} \
+          ${IQE_EXTRA_ARGS}

@@ -2,6 +2,12 @@
 
 File-Based Catalog for Cost Management Metrics Operator
 
+## Tekton CI docs
+
+Repository-local Tekton flow, architecture, and PipelineRun usage docs live in:
+
+- [`.tekton/README.md`](.tekton/README.md)
+
 **NOTE**: The catalog and bundle metadata format are dependent on the OCP version:
 
   * **OCP >= 4.17:**
@@ -17,7 +23,7 @@ File-Based Catalog for Cost Management Metrics Operator
 
 ## How to update
 
-Updates are made to the [basic-template.yaml](catalog-templates/basic-template.yaml) file and then a catalog is generated from the template. The template can be updated with a Make command.
+Updates are made to the [basic-template.yaml](catalog-template/basic-template.yaml) file and then a catalog is generated from the template. The template can be updated with a Make command.
 
 1. in the [Makefile](Makefile), update `VERSION`, `PREVIOUS_VERSION`, and `REGISTRY_SHA` to the latest values:
     ```

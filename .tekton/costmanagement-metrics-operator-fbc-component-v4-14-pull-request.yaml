@@ -12,7 +12,10 @@ metadata:
       ("catalog-old/***".pathChanged() ||
       "Dockerfile.v4-14".pathChanged() ||
       ".tekton/costmanagement-metrics-operator-fbc-component-v4-14-pull-request.yaml".pathChanged() ||
-      ".tekton/pipeline-build.yaml".pathChanged())
+      ".tekton/pipeline-build.yaml".pathChanged() ||
+      ".tekton/tasks/run-iqe-cost-operator.yaml".pathChanged() ||
+      ".tekton/pipelines/deploy-fbc-operator-with-iqe.yaml".pathChanged() ||
+      ".tekton/pipelineruns/deploy-fbc-operator-with-iqe-run-v4-14.yaml".pathChanged())
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: costmanagement-metrics-operator-fbc-v4-14

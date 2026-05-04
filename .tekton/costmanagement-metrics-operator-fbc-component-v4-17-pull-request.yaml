@@ -12,6 +12,9 @@ metadata:
       ("catalog-old/***".pathChanged() ||
       "Dockerfile.v4-17".pathChanged() ||
       ".tekton/costmanagement-metrics-operator-fbc-component-v4-17-pull-request.yaml".pathChanged() ||
+      ".tekton/tasks/run-iqe-cost-operator.yaml".pathChanged() ||
+      ".tekton/pipelines/deploy-fbc-operator-with-iqe.yaml".pathChanged() ||
+      ".tekton/pipelineruns/deploy-fbc-operator-with-iqe-run-v4-17.yaml".pathChanged() ||
       ".tekton/pipeline-build.yaml".pathChanged())
   creationTimestamp: null
   labels:

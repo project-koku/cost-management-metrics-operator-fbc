@@ -98,7 +98,7 @@ spec:
         fi
         echo "IQE preflight completed"
     - name: verify-iqe-image-access
-      image: quay.io/konflux-ci/konflux-test:v1.4.48
+      image: quay.io/konflux-ci/konflux-test:v1.5.0
       script: |
         #!/usr/bin/env bash
         set -euo pipefail

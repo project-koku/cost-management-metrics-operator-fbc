@@ -111,7 +111,7 @@ spec:
             description: Mirror entries used for imageContentSources.
         steps:
           - name: retrieve-mirror-set
-            image: quay.io/konflux-ci/konflux-test:v1.4.48
+            image: quay.io/konflux-ci/konflux-test:v1.5.0
             env:
               - name: SOURCE_GIT_URL
                 value: "$(tasks.parse-metadata.results.source-git-url)"
@@ -185,7 +185,7 @@ spec:
               - name: channelName
                 value: $(params.CHANNEL_NAME)
           - name: process-and-write-results
-            image: quay.io/konflux-ci/konflux-test:v1.4.48
+            image: quay.io/konflux-ci/konflux-test:v1.5.0
             env:
               - name: BUNDLE_IMAGE
                 value: "$(steps.discover-unreleased-bundle.results.unreleasedBundle)"
@@ -267,7 +267,7 @@ spec:
             description: Normalized override bundle image, empty if not provided.
         steps:
           - name: normalize-override
-            image: quay.io/konflux-ci/konflux-test:v1.4.48
+            image: quay.io/konflux-ci/konflux-test:v1.5.0
             env:
               - name: BUNDLE_IMAGE_OVERRIDE
                 value: "$(params.RELEASED_BUNDLE_IMAGE_OVERRIDE)"
@@ -305,7 +305,7 @@ spec:
             description: OLM channel name for the selected bundle.
         steps:
           - name: select
-            image: quay.io/konflux-ci/konflux-test:v1.4.48
+            image: quay.io/konflux-ci/konflux-test:v1.5.0
             env:
               - name: UNRELEASED_BUNDLE
                 value: "$(tasks.get-unreleased-bundle.results.unreleasedBundle)"
@@ -575,7 +575,7 @@ spec:
               fi
               echo "IQE preflight completed"
           - name: verify-iqe-image-access
-            image: quay.io/konflux-ci/konflux-test:v1.4.48
+            image: quay.io/konflux-ci/konflux-test:v1.5.0
             script: |
               #!/usr/bin/env bash
               set -euo pipefail

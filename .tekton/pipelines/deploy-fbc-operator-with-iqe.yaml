@@ -145,7 +145,7 @@ spec:
       when:
         - input: $(tasks.parse-metadata.results.test-event-type)
           operator: in
-          values: ["push", "Push", "pull_request"]
+          values: ["push", "Push"]
       workspaces:
         - name: shared-data
           workspace: shared-data

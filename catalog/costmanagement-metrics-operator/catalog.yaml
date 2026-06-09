@@ -9755,7 +9755,7 @@ relatedImages:
   name: ""
 schema: olm.bundle
 ---
-image: registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle@sha256:95cfdf7dfc443d8ea5b3430f280440e3a6ca39f7a0e1b3a3b9b358c5d46aa3f1
+image: registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle@sha256:c2c4a771905d23d7c0aad05672e5d8491c744ccb7f7192ef31e2b93f82a1f3b4
 name: costmanagement-metrics-operator.4.4.1
 package: costmanagement-metrics-operator
 properties:
@@ -9808,7 +9808,7 @@ properties:
       capabilities: Seamless Upgrades
       categories: Monitoring
       certified: "true"
-      containerImage: registry.redhat.io/costmanagement/costmanagement-metrics-rhel9-operator@sha256:2ef562c7bba3af231366aac593b6c73ab3a07d5562302c39650f2614fb8f4634
+      containerImage: registry.redhat.io/costmanagement/costmanagement-metrics-rhel9-operator@sha256:9371dc345d1722e12dd54f88a8597f85714bd7551bb302e16d9e3d335dbf4de3
       createdAt: "2026-06-01T13:23:30Z"
       description: A Golang-based OpenShift Operator that generates and uploads OpenShift
         usage metrics to cost management.
@@ -9905,6 +9905,7 @@ properties:
       * Added `nvidia-gpu-pod-utilization` metric to track per-pod GPU utilization over time.
       * (Bugfix) Fixed DCGM PromQL queries for clusters configured with `honor_labels=true`.
       * (Bugfix) Fixed NVIDIA MIG GPU memory capacity query to correctly scope metrics to MIG GPU instances only.
+      * (Bugfix) Fixed Resource Optimization workload reporting to exclude OpenShift DeploymentConfig workloads.
       * Updated dependencies.
 
       ## New in v4.4.0:
@@ -10243,8 +10244,8 @@ properties:
     provider:
       name: Red Hat
 relatedImages:
-- image: registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle@sha256:95cfdf7dfc443d8ea5b3430f280440e3a6ca39f7a0e1b3a3b9b358c5d46aa3f1
+- image: registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle@sha256:c2c4a771905d23d7c0aad05672e5d8491c744ccb7f7192ef31e2b93f82a1f3b4
   name: ""
-- image: registry.redhat.io/costmanagement/costmanagement-metrics-rhel9-operator@sha256:2ef562c7bba3af231366aac593b6c73ab3a07d5562302c39650f2614fb8f4634
+- image: registry.redhat.io/costmanagement/costmanagement-metrics-rhel9-operator@sha256:9371dc345d1722e12dd54f88a8597f85714bd7551bb302e16d9e3d335dbf4de3
   name: ""
 schema: olm.bundle

@@ -17,7 +17,6 @@ metadata:
         ".tekton/tasks/run-iqe-cost-operator.yaml".pathChanged() ||
         ".tekton/pipelines/deploy-fbc-operator-with-iqe.yaml".pathChanged() ||
         ".tekton/pipelineruns/deploy-fbc-operator-with-iqe-run-v4-22.yaml".pathChanged() ||
-        ".tekton/pipeline-build.yaml".pathChanged() ||
         ".tekton/images-mirror-set.yaml".pathChanged())
   labels:
     appstudio.openshift.io/application: costmanagement-metrics-operator-fbc-v4-22

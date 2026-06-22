@@ -147,7 +147,7 @@ metadata:
     release.appstudio.openshift.io/author: 'rh-ee-lbacciot'
     release.appstudio.openshift.io/version: '4.4.1'
     release.appstudio.openshift.io/sha: '04ba7172fe7a00785bd22443d5641c0acb9417b9'
-  name: costmanagement-metrics-operator-fbc-v4-22-20260611-154227-000-1
+  name: costmanagement-metrics-operator-fbc-v4-22-20260611-154227-000-2
   namespace: cost-mgmt-dev-tenant
 spec:
   releasePlan: costmanagement-metrics-operator-fbc-v4-22

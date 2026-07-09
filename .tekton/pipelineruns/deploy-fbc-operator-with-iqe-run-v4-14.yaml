@@ -2,6 +2,8 @@ apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   name: deploy-fbc-operator-with-iqe-run-v4-14
+  labels:
+    upstream-usable: "true"
 spec:
   pipelineRef:
     resolver: git

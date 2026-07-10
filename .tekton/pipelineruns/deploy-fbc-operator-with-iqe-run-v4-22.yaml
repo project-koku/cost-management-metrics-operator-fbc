@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  name: deploy-fbc-operator-with-iqe-run-v4-21
+  name: deploy-fbc-operator-with-iqe-run-v4-22
   labels:
     upstream-usable: "true"
 spec:
@@ -20,7 +20,7 @@ spec:
   timeouts:
     pipeline: "2h30m0s"
   taskRunTemplate:
-    serviceAccountName: build-pipeline-costmanagement-metrics-operator-fbc-component-v4-21
+    serviceAccountName: build-pipeline-costmanagement-metrics-operator-fbc-component-v4-22
   workspaces:
     - name: shared-data
       volumeClaimTemplate:

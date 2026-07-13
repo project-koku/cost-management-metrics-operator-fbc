@@ -11,8 +11,9 @@ metadata:
       event == "pull_request" && target_branch == "main" &&
       ("catalog-old/***".pathChanged() ||
       "Dockerfile.v4-12".pathChanged() ||
-      ".tekton/costmanagement-metrics-operator-fbc-component-v4-12-pull-request.yaml".pathChanged() ||
-      ".tekton/pipeline-build.yaml".pathChanged())
+      ".tekton/images-mirror-set.yaml".pathChanged() ||
+      ".tekton/pipeline-build.yaml".pathChanged() ||
+      ".tekton/costmanagement-metrics-operator-fbc-component-v4-12-pull-request.yaml".pathChanged())
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: costmanagement-metrics-operator-fbc-v4-12

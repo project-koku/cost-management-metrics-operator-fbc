@@ -1,0 +1,44 @@
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  labels:
+    release.appstudio.openshift.io/author: "rh-ee-lbacciot"
+  namespace: cost-mgmt-dev-tenant
+  name: costmanagement-metrics-operator-4.4.2-prod-1
+spec:
+  releasePlan: costmanagement-metrics-operator
+  snapshot: costmanagement-metrics-operator-20260709-160540-000
+  data:
+    releaseNotes:
+      type: RHSA
+      topic: "Cost Management Metrics Operator version 4.4.2 release."
+      issues:
+        fixed:
+          - id: COST-7726
+            source: issues.redhat.com
+          - id: COST-7754
+            source: issues.redhat.com
+          - id: COST-7764
+            source: issues.redhat.com
+          - id: COST-7781
+            source: issues.redhat.com
+      cves:
+        - key: CVE-2026-31790
+          component: costmanagement-metrics-operator
+          packages:
+            - openssl-fips-provider
+        - key: CVE-2025-5278
+          component: costmanagement-metrics-operator
+          packages:
+            - coreutils
+        - key: CVE-2026-5450
+          component: costmanagement-metrics-operator
+          packages:
+            - glibc
+      references:
+        - https://access.redhat.com/security/updates/classification
+        - https://access.redhat.com/security/cve/CVE-2026-31790
+        - https://access.redhat.com/security/cve/CVE-2025-5278
+        - https://access.redhat.com/security/cve/CVE-2026-5450
+        - https://docs.redhat.com/en/documentation/cost_management_service/1-latest/html/getting_started_with_cost_management/steps-to-cost-management

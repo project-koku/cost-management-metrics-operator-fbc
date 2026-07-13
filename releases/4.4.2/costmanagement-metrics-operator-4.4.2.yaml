@@ -15,7 +15,9 @@ spec:
       topic: "Cost Management Metrics Operator version 4.4.2 release."
       issues:
         fixed:
-          - id: COST-7726
+          - id: COST-7461
+            source: issues.redhat.com
+          - id: COST-7711
             source: issues.redhat.com
           - id: COST-7754
             source: issues.redhat.com
@@ -24,6 +26,14 @@ spec:
           - id: COST-7781
             source: issues.redhat.com
       cves:
+        - key: CVE-2026-4878
+          component: costmanagement-metrics-operator
+          packages:
+            - libcap
+        - key: CVE-2026-45447
+          component: costmanagement-metrics-operator
+          packages:
+            - openssl
         - key: CVE-2026-31790
           component: costmanagement-metrics-operator
           packages:
@@ -38,6 +48,8 @@ spec:
             - glibc
       references:
         - https://access.redhat.com/security/updates/classification
+        - https://access.redhat.com/security/cve/CVE-2026-4878
+        - https://access.redhat.com/security/cve/CVE-2026-45447
         - https://access.redhat.com/security/cve/CVE-2026-31790
         - https://access.redhat.com/security/cve/CVE-2025-5278
         - https://access.redhat.com/security/cve/CVE-2026-5450

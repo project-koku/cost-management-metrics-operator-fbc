@@ -62,6 +62,10 @@ spec:
           component: costmanagement-metrics-operator
           packages:
             - glibc
+        - key: CVE-2026-0915
+          component: costmanagement-metrics-operator
+          packages:
+            - glibc
       references:
         - https://access.redhat.com/security/updates/classification
         - https://access.redhat.com/security/cve/CVE-2026-4878
@@ -73,4 +77,5 @@ spec:
         - https://access.redhat.com/security/cve/CVE-2026-31790
         - https://access.redhat.com/security/cve/CVE-2025-5278
         - https://access.redhat.com/security/cve/CVE-2026-5450
+        - https://access.redhat.com/security/cve/CVE-2026-0915
         - https://docs.redhat.com/en/documentation/cost_management_service/1-latest/html/getting_started_with_cost_management/steps-to-cost-management

@@ -2,6 +2,19 @@
 
 File-Based Catalog for Cost Management Metrics Operator
 
+## Downstream release train (where this repo fits)
+
+This README is the **source of truth for FBC tooling**: Make targets, catalog generation, gathering CatalogSource images for QE, and `configure_cluster.py`.
+
+The end-to-end Downstream product release (operator → bundle → FBC → stage → QE → prod) lives in the operator repo:
+
+- **[Downstream release — Phase B (FBC)](https://github.com/project-koku/koku-metrics-operator/blob/main/docs/releasing/downstream.md#phase-b--fbc-cost-management-metrics-operator-fbc)** — release-train checklist, QE heads-up, “all OCP majors must succeed,” and pitfalls
+- **[Release hub (start here)](https://github.com/project-koku/koku-metrics-operator/blob/main/docs/releasing/start-here.md)** — code change vs CVE, versioning, which runbook to open
+
+Use this README for *how* to update catalogs; use the operator hub for *when* FBC runs in a Downstream release and what gates matter next.
+
+> **Note:** The operator release hub lands with [koku-metrics-operator#1026](https://github.com/project-koku/koku-metrics-operator/pull/1026). Until that merges, the same pages are on branch `cost-7776-operator-release-docs`.
+
 ## Tekton CI docs
 
 Repository-local Tekton flow, architecture, and PipelineRun usage docs live in:
@@ -24,6 +37,8 @@ Repository-local Tekton flow, architecture, and PipelineRun usage docs live in:
 ## How to update
 
 Updates are made to the [basic-template.yaml](catalog-template/basic-template.yaml) file and then a catalog is generated from the template. The template can be updated with a Make command.
+
+> During a Downstream release, `REGISTRY_SHA` is the **operator bundle** digest from Phase A — see [Phase B](https://github.com/project-koku/koku-metrics-operator/blob/main/docs/releasing/downstream.md#phase-b--fbc-cost-management-metrics-operator-fbc).
 
 1. in the [Makefile](Makefile), update `VERSION`, `PREVIOUS_VERSION`, and `REGISTRY_SHA` to the latest values:
     ```
@@ -101,6 +116,8 @@ Updates are made to the [basic-template.yaml](catalog-template/basic-template.ya
     ```
 
 4. These are the `CatalogSource` images and are passed to QE for testing.
+
+> After gathering images, hand-off modes (request testing vs info-only) and Slack templates are in the [operator Downstream QE section](https://github.com/project-koku/koku-metrics-operator/blob/main/docs/releasing/downstream.md#qe-coordination).
 
 ## Configuring a cluster with FBC
 

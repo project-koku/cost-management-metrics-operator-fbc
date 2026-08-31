@@ -24,7 +24,7 @@ spec:
     - name: IQE_MARKER_EXPRESSION
       type: string
       description: IQE marker expression.
-      default: "cost_operator"
+      default: "cost_metrics_operator"
     - name: IQE_FILTER_EXPRESSION
       type: string
       description: Optional IQE filter expression.

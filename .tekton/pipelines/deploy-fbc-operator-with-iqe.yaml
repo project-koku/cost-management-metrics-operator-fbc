@@ -34,7 +34,7 @@ spec:
       default: quay.io/cloudservices/iqe-tests:cost-management
     - name: IQE_MARKER_EXPRESSION
       type: string
-      default: cost_operator
+      default: cost_metrics_operator
     - name: IQE_FILTER_EXPRESSION
       type: string
       default: ""
@@ -504,7 +504,7 @@ spec:
             default: cost_management
           - name: IQE_MARKER_EXPRESSION
             type: string
-            default: cost_operator
+            default: cost_metrics_operator
           - name: IQE_FILTER_EXPRESSION
             type: string
             default: ""

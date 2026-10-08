@@ -38,6 +38,12 @@ spec:
       type: string
       description: Number of worker nodes in the ephemeral HyperShift cluster.
       default: "3"
+    - name: RELEASES_CHANNEL_OVERRIDE
+      type: string
+      description: |
+        Override the releases channel (e.g., "candidate", "fast").
+        Use for OCP versions not yet GA where "stable" channel doesn't exist.
+      default: ""
     - name: IQE_PLUGINS
       type: string
       default: cost_management
@@ -339,6 +345,10 @@ spec:
           operator: in
           values: ["push", "Push", "pull_request"]
       taskSpec:
+        params:
+          - name: RELEASES_CHANNEL_OVERRIDE
+            type: string
+            default: ""
         results:
           - name: ocpVersion
             value: "$(steps.pick-cluster-version.results.ocpVersion)"
@@ -346,6 +356,8 @@ spec:
             value: "$(steps.pick-cluster-arch.results.arch)"
           - name: awsInstanceType
             value: "$(steps.pick-cluster-arch.results.awsInstanceType)"
+          - name: releasesChannel
+            value: "$(steps.resolve-releases-channel.results.releasesChannel)"
         steps:
           - name: pick-cluster-version
             ref:
@@ -373,6 +385,29 @@ spec:
             params:
               - name: bundleImage
                 value: "$(tasks.select-bundle-image.results.selectedBundle)"
+          - name: resolve-releases-channel
+            image: registry.access.redhat.com/ubi9/ubi-minimal
+            env:
+              - name: RELEASES_CHANNEL_OVERRIDE
+                value: "$(params.RELEASES_CHANNEL_OVERRIDE)"
+            results:
+              - name: releasesChannel
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+
+              if [[ -n "${RELEASES_CHANNEL_OVERRIDE}" ]]; then
+                echo "Using releases channel override: ${RELEASES_CHANNEL_OVERRIDE}"
+                releases_channel="${RELEASES_CHANNEL_OVERRIDE}"
+              else
+                releases_channel="stable"
+              fi
+
+              echo "Final releases channel: ${releases_channel}"
+              echo -n "${releases_channel}" > "$(step.results.releasesChannel.path)"
+      params:
+        - name: RELEASES_CHANNEL_OVERRIDE
+          value: "$(params.RELEASES_CHANNEL_OVERRIDE)"
 
     - name: provision-cluster
       retries: 1
@@ -423,7 +458,7 @@ spec:
             }
         - name: releases
           value: |
-            {"latest":{"release":{"channel":"stable","version":"$(tasks.pick-cluster-params.results.ocpVersion)","architecture":"multi"}}}
+            {"latest":{"release":{"channel":"$(tasks.pick-cluster-params.results.releasesChannel)","version":"$(tasks.pick-cluster-params.results.ocpVersion)","architecture":"multi"}}}
 
     - name: run-iqe-cost-operator
       runAfter:

@@ -17,6 +17,9 @@ spec:
   params:
     - name: RELEASED_BUNDLE_IMAGE_OVERRIDE
       value: "registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle@sha256:fa43be2fd285110e13fb4e782479b28a6e59ffc25da384d4aae745b6d70c74c7"
+    # OCP 5.0 is in dev-preview: no "stable" channel yet, use "candidate"
+    - name: RELEASES_CHANNEL_OVERRIDE
+      value: "candidate"
   timeouts:
     pipeline: "2h30m0s"
   taskRunTemplate:

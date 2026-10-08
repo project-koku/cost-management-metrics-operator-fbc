@@ -102,6 +102,29 @@ and override the fields below.
 | `params.SNAPSHOT` | JSON of a **push** snapshot `.spec` only (catalog/FBC input) |
 | `params.RELEASED_BUNDLE_IMAGE_OVERRIDE` | Operator bundle image when `get-unreleased-bundle` finds nothing |
 
+### Channel override (for newer OCP versions)
+
+OCP versions in dev-preview (e.g., 5.0) don't have a "stable" release channel yet.
+When the ProwJob fails with `resolving_inputs:resolving_release`, use the channel
+override:
+
+| Parameter | Purpose | Default |
+|-----------|---------|---------|
+| `RELEASES_CHANNEL_OVERRIDE` | Override releases channel (e.g., `candidate`) | `stable` |
+
+Example for OCP 5.0:
+
+```yaml
+params:
+  - name: RELEASES_CHANNEL_OVERRIDE
+    value: "candidate"
+```
+
+**Check channel availability:** OpenShift CI cluster pools are defined in
+[openshift/release](https://github.com/openshift/release/tree/main/clusters/hosted-mgmt/hive/pools/openshift-ci).
+The `version_stream` label indicates if "stable" channel exists (e.g.,
+`5-dev-preview` means use "candidate" or "fast" instead).
+
 ### Required PipelineRun labels
 
 `parse-metadata` reads labels on the **PipelineRun** (downward API), not labels
@@ -213,6 +236,7 @@ Watch in Konflux UI under the matching FBC application in `cost-mgmt-dev-tenant`
 | `jq: Cannot iterate over null` in `parse-metadata` | SNAPSHOT wrapped in `metadata`+`spec` | Use `.spec` only |
 | `provision-cluster` skipped | Empty `selectedBundle` | Set `RELEASED_BUNDLE_IMAGE_OVERRIDE` or use a push snapshot with an unreleased bundle |
 | `TestPlatformCluster` `AlreadyExists` | Reused PipelineRun name / leftover claim | Unique `metadata.name`; delete old PipelineRun and wait |
+| ProwJob fails with `resolving_inputs:resolving_release` | OCP version not GA, no "stable" channel | Set `RELEASES_CHANNEL_OVERRIDE` to `candidate` or `fast` |
 | GitHub check still neutral after a green proof | PaC never matched PR paths | Expected; merge gate is the manual proof, not the PR check |
 | ITS retest does not exercise the PR branch | ITS resolves pipeline from `main` | Pin `pipelineRef` to the PR fork/revision |
 

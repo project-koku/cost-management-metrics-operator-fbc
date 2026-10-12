@@ -1,0 +1,119 @@
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  labels:
+    release.appstudio.openshift.io/author: "rh-ee-lbacciot"
+  namespace: cost-mgmt-dev-tenant
+  name: costmanagement-metrics-operator-4.5.0-prod-1
+spec:
+  releasePlan: costmanagement-metrics-operator
+  snapshot: costmanagement-metrics-operator-20261001-103823-000
+  data:
+    releaseNotes:
+      type: RHSA
+      topic: "Cost Management Metrics Operator version 4.5.0 release."
+      issues:
+        fixed:
+          - id: COST-7100
+            source: issues.redhat.com
+          - id: COST-7287
+            source: issues.redhat.com
+          - id: COST-7418
+            source: issues.redhat.com
+          - id: COST-7937
+            source: issues.redhat.com
+          - id: COST-7950
+            source: issues.redhat.com
+          - id: COST-7952
+            source: issues.redhat.com
+          - id: COST-7997
+            source: issues.redhat.com
+          - id: COST-7998
+            source: issues.redhat.com
+          - id: COST-7999
+            source: issues.redhat.com
+          - id: COST-8157
+            source: issues.redhat.com
+          - id: COST-8196
+            source: issues.redhat.com
+          - id: COST-8226
+            source: issues.redhat.com
+          - id: COST-8233
+            source: issues.redhat.com
+          - id: COST-8343
+            source: issues.redhat.com
+      cves:
+        - key: CVE-2026-18378
+          component: costmanagement-metrics-operator
+          packages:
+            - costmanagement-metrics-operator
+        - key: CVE-2026-18381
+          component: costmanagement-metrics-operator
+          packages:
+            - costmanagement-metrics-operator
+        - key: CVE-2026-18382
+          component: costmanagement-metrics-operator
+          packages:
+            - costmanagement-metrics-operator
+        - key: CVE-2026-54369
+          component: costmanagement-metrics-operator
+          packages:
+            - acl
+        - key: CVE-2026-14456
+          component: costmanagement-metrics-operator
+          packages:
+            - openssl
+        - key: CVE-2026-18798
+          component: costmanagement-metrics-operator
+          packages:
+            - openssl
+        - key: CVE-2026-63072
+          component: costmanagement-metrics-operator
+          packages:
+            - openssl
+        - key: CVE-2026-63076
+          component: costmanagement-metrics-operator
+          packages:
+            - openssl
+        - key: CVE-2026-54371
+          component: costmanagement-metrics-operator
+          packages:
+            - attr
+        - key: CVE-2026-56392
+          component: costmanagement-metrics-operator
+          packages:
+            - coreutils
+        - key: CVE-2026-5435
+          component: costmanagement-metrics-operator
+          packages:
+            - glibc
+        - key: CVE-2026-5928
+          component: costmanagement-metrics-operator
+          packages:
+            - glibc
+        - key: CVE-2026-6238
+          component: costmanagement-metrics-operator
+          packages:
+            - glibc
+        - key: CVE-2026-13757
+          component: costmanagement-metrics-operator
+          packages:
+            - p11-kit
+      references:
+        - https://access.redhat.com/security/updates/classification
+        - https://access.redhat.com/security/cve/CVE-2026-18378
+        - https://access.redhat.com/security/cve/CVE-2026-18381
+        - https://access.redhat.com/security/cve/CVE-2026-18382
+        - https://access.redhat.com/security/cve/CVE-2026-54369
+        - https://access.redhat.com/security/cve/CVE-2026-14456
+        - https://access.redhat.com/security/cve/CVE-2026-18798
+        - https://access.redhat.com/security/cve/CVE-2026-63072
+        - https://access.redhat.com/security/cve/CVE-2026-63076
+        - https://access.redhat.com/security/cve/CVE-2026-54371
+        - https://access.redhat.com/security/cve/CVE-2026-56392
+        - https://access.redhat.com/security/cve/CVE-2026-5435
+        - https://access.redhat.com/security/cve/CVE-2026-5928
+        - https://access.redhat.com/security/cve/CVE-2026-6238
+        - https://access.redhat.com/security/cve/CVE-2026-13757
+        - https://docs.redhat.com/en/documentation/cost_management_service/1-latest/html/getting_started_with_cost_management/steps-to-cost-management

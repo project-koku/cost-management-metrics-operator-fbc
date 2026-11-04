@@ -1,0 +1,94 @@
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  labels:
+    release.appstudio.openshift.io/author: "vsizilio"
+  namespace: cost-mgmt-dev-tenant
+  name: costmanagement-metrics-operator-4.5.1-prod-1
+spec:
+  releasePlan: costmanagement-metrics-operator
+  snapshot: costmanagement-metrics-operator-20261028-164416-000
+  data:
+    releaseNotes:
+      type: RHSA
+      topic: "Cost Management Metrics Operator version 4.5.1 release."
+      issues:
+        fixed:
+          - id: COST-8391
+            source: issues.redhat.com
+          - id: COST-8396
+            source: issues.redhat.com
+          - id: COST-8408
+            source: issues.redhat.com
+          - id: COST-8494
+            source: issues.redhat.com
+      cves:
+        - key: CVE-2026-114406
+          component: costmanagement-metrics-operator
+          packages:
+            - ca-certificates
+        - key: CVE-2026-84782
+          component: costmanagement-metrics-operator
+          packages:
+            - openssl
+        - key: CVE-2026-86145
+          component: costmanagement-metrics-operator
+          packages:
+            - pcre2
+        - key: CVE-2026-103111
+          component: costmanagement-metrics-operator
+          packages:
+            - pcre2
+        - key: CVE-2026-89161
+          component: costmanagement-metrics-operator
+          packages:
+            - pcre2
+        - key: CVE-2026-6368
+          component: costmanagement-metrics-operator
+          packages:
+            - glibc
+        - key: CVE-2026-19542
+          component: costmanagement-metrics-operator
+          packages:
+            - glibc
+        - key: CVE-2026-18374
+          component: costmanagement-metrics-operator
+          packages:
+            - glibc
+        - key: CVE-2026-6791
+          component: costmanagement-metrics-operator
+          packages:
+            - glibc
+        - key: CVE-2026-77117
+          component: costmanagement-metrics-operator
+          packages:
+            - glibc
+        - key: CVE-2026-80489
+          component: costmanagement-metrics-operator
+          packages:
+            - glibc
+        - key: CVE-2026-89157
+          component: costmanagement-metrics-operator
+          packages:
+            - pcre2
+        - key: CVE-2026-89158
+          component: costmanagement-metrics-operator
+          packages:
+            - pcre2
+      references:
+        - https://access.redhat.com/security/updates/classification
+        - https://access.redhat.com/security/cve/CVE-2026-114406
+        - https://access.redhat.com/security/cve/CVE-2026-84782
+        - https://access.redhat.com/security/cve/CVE-2026-86145
+        - https://access.redhat.com/security/cve/CVE-2026-103111
+        - https://access.redhat.com/security/cve/CVE-2026-89161
+        - https://access.redhat.com/security/cve/CVE-2026-6368
+        - https://access.redhat.com/security/cve/CVE-2026-19542
+        - https://access.redhat.com/security/cve/CVE-2026-18374
+        - https://access.redhat.com/security/cve/CVE-2026-6791
+        - https://access.redhat.com/security/cve/CVE-2026-77117
+        - https://access.redhat.com/security/cve/CVE-2026-80489
+        - https://access.redhat.com/security/cve/CVE-2026-89157
+        - https://access.redhat.com/security/cve/CVE-2026-89158
+        - https://docs.redhat.com/en/documentation/cost_management_service/1-latest/html/getting_started_with_cost_management/steps-to-cost-management

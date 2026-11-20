@@ -16,10 +16,10 @@ spec:
         value: .tekton/pipelines/deploy-fbc-operator-with-iqe.yaml
   params:
     - name: RELEASED_BUNDLE_IMAGE_OVERRIDE
-      value: "registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle@sha256:fa43be2fd285110e13fb4e782479b28a6e59ffc25da384d4aae745b6d70c74c7"
+      value: "registry.redhat.io/costmanagement/costmanagement-metrics-operator-bundle@sha256:86a97ab9093a9a2290d3e51ce671c5f62dfcdd86dea9862d1f6c03c310980ae3"
     # OCP 5.0 is in dev-preview: no "stable" channel yet, use "candidate"
     - name: RELEASES_CHANNEL_OVERRIDE
-      value: "candidate"
+      value: ""
   timeouts:
     pipeline: "2h30m0s"
   taskRunTemplate:
